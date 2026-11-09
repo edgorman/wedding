@@ -30,16 +30,3 @@ resource "google_storage_bucket_iam_member" "frontend_github_actions_writer" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${var.ci_service_account}"
 }
-
-# These buckets were first created by infrastructure/root, which now forgets them (its `removed`
-# blocks) without deleting them, so this adopts them. Delete these two blocks once both
-# environments have applied: an import block fails on an environment whose bucket doesn't exist.
-import {
-  id = "${var.gcp_project_id}-frontend"
-  to = google_storage_bucket.frontend
-}
-
-import {
-  id = "b/${var.gcp_project_id}-frontend roles/storage.objectAdmin serviceAccount:${var.ci_service_account}"
-  to = google_storage_bucket_iam_member.frontend_github_actions_writer
-}
