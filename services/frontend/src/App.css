@@ -49,11 +49,21 @@ body {
 
 .venue a {
   color: inherit;
-  text-decoration: underline;
-  text-decoration-color: var(--accent);
-  text-underline-offset: 0.25em;
+  text-decoration: none;
+  padding-bottom: 0.3em;
+  background-repeat: repeat-x;
+  background-position: left bottom;
+  background-size: 10px 5px;
+  background-image: none;
 }
 
-.venue a:hover {
-  color: var(--accent);
+/* Thin scalloped underline, shown only on hover, keyboard focus and click */
+.venue a:hover,
+.venue a:focus-visible,
+.venue a:active {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='5' viewBox='0 0 10 5'%3E%3Cpath d='M0 .6 Q5 6 10 .6' fill='none' stroke='%238a6a4f' stroke-width='0.8'/%3E%3C/svg%3E");
+}
+
+.venue a:focus-visible {
+  outline: none;
 }
