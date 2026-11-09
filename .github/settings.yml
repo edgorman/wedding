@@ -6,11 +6,9 @@
 
 repository:
   # General
-  name: webapp-template
-  description: Template for a full-stack web app - Go on Cloud Run, React on Cloudflare Pages, Terraform, moon, trunk-based CI/CD.
-  # A GitHub template repository, so "Use this template" creates new repositories from it. A
-  # repository made from it sets this back to false along with its own name (docs/new-repo.md).
-  is_template: true
+  name: wedding
+  description: Ed and Katie's wedding website - a static React site on Cloudflare Pages.
+  is_template: false
   private: false
   has_issues: true
   has_projects: false
@@ -36,9 +34,6 @@ labels:
   - name: infrastructure
     color: "1d76db"
     description: Terraform / infrastructure changes
-  - name: backend
-    color: "0e8a16"
-    description: Backend service changes
   - name: frontend
     color: "fbca04"
     description: Frontend changes
@@ -79,12 +74,8 @@ branches:
           - changed
           - lint-check
           - test
-          - protos-drift
           - infrastructure-root
-          - infrastructure-staging
-          - infrastructure-prod
           - pr-title
-          - protos-breaking
 
       # Stays false on purpose: Claude Code opens PRs as the repository owner, GitHub never lets an
       # author approve their own PR, so the owner merges those with the admin override. Revisit

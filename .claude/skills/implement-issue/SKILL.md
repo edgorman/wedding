@@ -26,7 +26,7 @@ Rules for the code itself are in the `AGENTS.md` of each area you touch, and CI 
 ## 3. Verify
 
 - Run steward's "Before any push" commands.
-- Check every acceptance criterion and record how: a command and its result, or why it can't be checked here (`:validate` and `services/backend:image` can't run in a cloud session).
+- Check every acceptance criterion and record how: a command and its result, or why it can't be checked here (`:validate` can't run in a cloud session).
 - Run `/code-review` on the diff and fix what it finds before opening the PR.
 
 ## 4. Open the PR

@@ -1,6 +1,6 @@
 # 6. protojson settings
 
-Status: Accepted
+Status: Superseded by [28](0028-static-site-only.md)
 
 ## Context
 

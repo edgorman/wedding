@@ -1,5 +1,4 @@
 $schema: './cache/schemas/toolchains.json'
-go: {}
 javascript:
   packageManager: 'npm'
   inferTasksFromScripts: false   # tasks are declared explicitly in moon.yml

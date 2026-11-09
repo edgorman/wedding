@@ -1,6 +1,6 @@
 # 23. Monitoring watches Cloud Run's own metrics
 
-Status: Accepted
+Status: Superseded by [28](0028-static-site-only.md)
 
 ## Context
 
