@@ -11,8 +11,16 @@ function App() {
         alt="Watercolour drawing of St James' Church, Shere"
       />
       <h1 className="names">Ed &amp; Katie&apos;s Wedding</h1>
-      <p className="venue">St James' Church, Shere</p>
-      <p className="date">October 2027</p>
+      <p className="venue">
+        <a
+          href="https://maps.app.goo.gl/LxyWMHvFjjvrS6j67"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          St James' Church, Shere
+        </a>
+      </p>
+      <p className="date">16th October 2027</p>
     </main>
   )
 }

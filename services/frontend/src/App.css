@@ -17,6 +17,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
@@ -44,4 +45,15 @@ body {
 
 .date {
   font-size: clamp(1.1rem, 3.5vw, 1.4rem);
+}
+
+.venue a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 0.25em;
+}
+
+.venue a:hover {
+  color: var(--accent);
 }
