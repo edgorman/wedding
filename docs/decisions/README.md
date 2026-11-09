@@ -22,7 +22,7 @@ These records came with the repository's template. Those marked superseded no lo
 | [14](0014-prototools-pins-the-toolchain.md) | `.prototools` is the single source of tool versions | ci |
 | [15](0015-build-once-promote-by-sha.md) | Build once, promote by commit SHA | ci |
 | [16](0016-pre-release-gates.md) | What a pre-release waits for | ci |
-| [17](0017-manual-prod-infrastructure-apply.md) | A manual prod apply, for bootstrapping only (superseded by 28) | ci |
+| [17](0017-manual-prod-infrastructure-apply.md) | A manual prod apply, for bootstrapping only | ci |
 | [18](0018-versions-from-conventional-commits.md) | Versions come from Conventional Commit subjects | ci |
 | [19](0019-one-gcp-project-per-environment.md) | One GCP project per environment, plus a root | infrastructure |
 | [20](0020-workload-identity-federation.md) | CI authenticates with Workload Identity Federation | infrastructure |
@@ -34,3 +34,4 @@ These records came with the repository's template. Those marked superseded no lo
 | [26](0026-build-only-what-changed.md) | Build only what changed, reuse the rest | ci |
 | [27](0027-artifact-stores-in-root.md) | Artifact stores are created by root, not by each environment | infrastructure |
 | [28](0028-static-site-only.md) | A static site only, with no backend | repo |
+| [29](0029-env-terraform-kept.md) | Per-environment Terraform is kept, and owns each environment's frontend bucket | infrastructure |

@@ -24,7 +24,7 @@ resource "google_project_iam_member" "github_actions_iam_admin" {
   member  = "serviceAccount:${google_service_account.github_actions.email}"
 }
 
-# The frontend bucket's writer binding in artifact_stores.tf needs storage.buckets.setIamPolicy,
+# The frontend bucket's writer binding in infrastructure/env/storage.tf needs storage.buckets.setIamPolicy,
 # which roles/editor excludes the same way it excludes setIamPolicy on the resources above.
 # storage.buckets.create itself needs no extra grant - that part is already covered by editor.
 resource "google_project_iam_member" "github_actions_storage_admin" {

@@ -31,8 +31,8 @@ jobs:
         name: Calculate Next Version
         uses: Fresa/trunk-based-release-versioning@8b8150e3258028d42d7a8d30aec43491f5794d9e # v0.2.0
 
-  # moon decides whether the Terraform root needs applying, the same way pull-request.yaml's
-  # `changed` job decides whether to plan it. The publish marker decides whether the frontend is
+  # moon decides which Terraform deployment(s) an apply reaches, the same way pull-request.yaml's
+  # `changed` job decides which to plan. The publish marker decides whether the frontend is
   # rebuilt; otherwise base_sha's artifact is reused (decision 26).
   changed:
     # Skipped until infrastructure/root's bootstrap writes the repository variables (see
@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       infrastructure-root: ${{ steps.moon.outputs.root }}
+      infrastructure-staging: ${{ steps.moon.outputs.staging }}
       frontend: ${{ steps.moon.outputs.frontend }}
       base_sha: ${{ steps.moon.outputs.base_sha }}
     steps:
@@ -74,11 +75,12 @@ jobs:
             export MOON_BASE="$base"
             echo "base_sha=$(git rev-list -n 1 "$base")" >> "$GITHUB_OUTPUT"
           else
-            printf '%s=true\n' root frontend >> "$GITHUB_OUTPUT"
+            printf '%s=true\n' root staging frontend >> "$GITHUB_OUTPUT"
             exit 0
           fi
           moon query affected > affected.json
-          for pair in root=deploy-root:plan frontend=services/frontend:publish; do
+          for pair in root=deploy-root:plan staging=deploy-staging:plan \
+            frontend=services/frontend:publish; do
             # .tasks is omitted entirely when nothing is affected (moon's Affected struct skips
             # empty maps on serialize), so `(.tasks // {})` guards against `has` erroring on null.
             val=$(jq -r --arg t "${pair#*=}" '(.tasks // {}) | has($t)' affected.json)
@@ -91,13 +93,15 @@ jobs:
   # so staging always shows this commit's version. One folder feeds both buckets and Cloudflare
   # Pages, so the live staging site is never different from what's stored.
   services-frontend:
-    # infrastructure-root is checked on its own: it skips (rather than fails) when root isn't
-    # affected.
-    needs: [changed, infrastructure-root, version]
+    # infrastructure-root is checked on its own because infrastructure-staging skips (rather than
+    # fails) after it when staging isn't affected. Staging must have applied first: it owns the
+    # bucket this publishes into.
+    needs: [changed, infrastructure-root, infrastructure-staging, version]
     if: |
       always() &&
       needs.changed.result == 'success' &&
       (needs.infrastructure-root.result == 'success' || needs.infrastructure-root.result == 'skipped') &&
+      (needs.infrastructure-staging.result == 'success' || needs.infrastructure-staging.result == 'skipped') &&
       needs.version.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -164,6 +168,33 @@ jobs:
           plan_dir: gs://${{ vars.GCP_ROOT_PROJECT }}-terraform-state/plans/root
           secrets: ${{ steps.secrets.outputs.secrets }}
 
+  # Waits on infrastructure-root so any IAM grants or API enablement it applies land first.
+  infrastructure-staging:
+    needs: [changed, infrastructure-root]
+    if: |
+      always() &&
+      needs.changed.outputs.infrastructure-staging == 'true' &&
+      needs.changed.result == 'success' &&
+      (needs.infrastructure-root.result == 'success' || needs.infrastructure-root.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.SERVICE_ACCOUNT }}
+      - uses: ./.github/actions/terraform-push-commit
+        with:
+          terraform_directory: 'infrastructure/env'
+          config_directory: 'infrastructure/config/staging'
+          plan_dir: gs://${{ vars.GCP_PROJECT_PREFIX }}-stag-terraform-state/plans/staging
+          secrets: |
+            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
+
   # The deployed staging site, checked once it is live: pre-release waits on it, so a broken
   # deploy leaves this merge without a release candidate.
   smoke:
@@ -201,6 +232,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -211,6 +243,24 @@ jobs:
       - id: version
         name: Calculate Next Version
         uses: Fresa/trunk-based-release-versioning@8b8150e3258028d42d7a8d30aec43491f5794d9e # v0.2.0
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.SERVICE_ACCOUNT }}
+
+      # The same read-only, -lock=false plan a PR runs against prod (it only comments on a
+      # pull_request event), leaving infrastructure/env/tfplan.txt for the notes below and saving
+      # the binary plan that promoting this pre-release applies.
+      - uses: ./.github/actions/terraform-pull-request
+        with:
+          terraform_directory: 'infrastructure/env'
+          config_directory: 'infrastructure/config/prod'
+          plan_dir: gs://${{ vars.GCP_PROJECT_PREFIX }}-prod-terraform-state/plans/prod
+          secrets: |
+            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Write Release Notes
         shell: bash
@@ -223,6 +273,17 @@ jobs:
             # indent) so each commit renders as a normal markdown bullet.
             awk 'BEGIN { RS="\n---\n"; FS="\n" } NF>=3 { printf "- %s (%.7s)\n", substr($3,2), substr($1,7) }' \
               "${{ steps.version.outputs.commit-logs-path }}"
+            echo
+            echo "### Terraform Plan for \`prod\` Environment"
+            echo
+            echo "<details>"
+            echo "<summary>Show Plan</summary>"
+            echo
+            echo '```hcl'
+            cat infrastructure/env/tfplan.txt
+            echo '```'
+            echo
+            echo "</details>"
           } > RELEASE_NOTES.md
 
       - name: Create Pre-Release

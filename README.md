@@ -15,7 +15,7 @@ New here? [`docs/start-here.md`](docs/start-here.md) goes from a fresh clone to 
 | Path | What |
 | --- | --- |
 | `services/frontend` | Vite/React static site, deployed to Cloudflare Pages |
-| `infrastructure` | Terraform for the GCP projects (`edward-katie-wedding-root`, `-stag`, `-prod`), Cloudflare Pages and GitHub |
+| `infrastructure` | Terraform: `root` for the GCP projects (`edward-katie-wedding-root`, `-stag`, `-prod`), Cloudflare Pages and GitHub; `env` per environment (today each frontend bucket) |
 | `.github` | Workflows and composite actions: PR checks, staging deploy on merge, release promotion to prod |
 | `docs/decisions` | Why things are the way they are, one decision per file |
 
