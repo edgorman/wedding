@@ -1,4 +1,4 @@
-import church from './assets/church.jpg'
+import church from './assets/church.webp'
 import '@fontsource/cormorant-garamond/400.css'
 import './App.css'
 

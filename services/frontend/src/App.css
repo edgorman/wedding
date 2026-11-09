@@ -23,9 +23,6 @@ body {
 .church {
   width: min(22rem, 80vw);
   height: auto;
-  mix-blend-mode: multiply;
-  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 60%, transparent 100%);
-  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 60%, transparent 100%);
 }
 
 .names {
