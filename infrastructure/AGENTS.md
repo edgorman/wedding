@@ -14,7 +14,6 @@ Two Terraform roots: `env` (applied per environment from `config/staging` and `c
 
 - `infrastructure/env` is applied once per environment: staging on every merge, prod on promotion. Today it holds only the frontend bucket; backend and other cloud resources go here, never in root ([29](../docs/decisions/0029-env-terraform-kept.md)).
 - `apply-infrastructure-prod.yaml` is only for backfilling a new per-environment resource a merge depends on; say so in that PR ([17](../docs/decisions/0017-manual-prod-infrastructure-apply.md)).
-- `root/artifact_stores.tf` (`removed` blocks) and the `import` blocks in `env/storage.tf` exist only to move the existing buckets from root to env. Delete both once both environments have applied.
 
 ### IAM & Authentication
 
