@@ -27,8 +27,3 @@ output "frontend_domains" {
   description = "Custom domain bound to each environment's Cloudflare Pages project, if any"
   value       = { for k, v in cloudflare_pages_domain.frontend : k => v.name }
 }
-
-output "frontend_buckets" {
-  description = "Name of each environment's frontend static-build bucket"
-  value       = { for k, v in google_storage_bucket.frontend : k => v.name }
-}

@@ -31,7 +31,7 @@ All jobs of `.github/workflows/pull-request.yaml` and `pr-title` in `.github/wor
 | `test` → `:test` | Vitest | A real failure. Root-cause it |
 | `pr-title` | The PR title isn't a Conventional Commit: `type(scope)?!?: description`, type one of `feat`, `fix`, `build`, `chore`, `ci`, `docs`, `perf`, `refactor`, `revert`, `style`, `test` (root `AGENTS.md`) | Edit the title. The check reruns on the edit, no push needed |
 | `changed` | `moon query affected` failed | A `moon.yml` is invalid. `MOON_BASE=origin/main moon query affected` reproduces it |
-| `infrastructure-root` | `terraform init/fmt/validate/plan` with real credentials | See below |
+| `infrastructure-{root,staging,prod}` | `terraform init/fmt/validate/plan` with real credentials | See below |
 
 **Toolchain errors are not test failures.** `proto-shim: ... Permission denied (os error 13)` is the known toolchain cache bug that `cache: false` works around in every job. If it shows up anyway, it failed before any task ran, so one re-run is allowed.
 

@@ -1,6 +1,6 @@
 # 28. A static site only, with no backend
 
-Status: Accepted (supersedes 2-10, 17, 23, 24)
+Status: Accepted; partly superseded by [29](0029-env-terraform-kept.md)
 
 ## Context
 

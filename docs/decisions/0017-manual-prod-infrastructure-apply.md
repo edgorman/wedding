@@ -1,6 +1,6 @@
 # 17. A manual prod apply, for bootstrapping only
 
-Status: Superseded by [28](0028-static-site-only.md)
+Status: Accepted (reinstated by [29](0029-env-terraform-kept.md))
 
 ## Context
 

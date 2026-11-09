@@ -8,7 +8,10 @@ projects:
   sources:
     root: '.'
     infra-root: 'infrastructure/root'
+    infra-env: 'infrastructure/env'
     deploy-root: 'infrastructure/config/root'
+    deploy-staging: 'infrastructure/config/staging'
+    deploy-prod: 'infrastructure/config/prod'
 
 vcs:
   client: 'git'

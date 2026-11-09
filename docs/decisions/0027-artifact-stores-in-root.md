@@ -1,6 +1,6 @@
 # 27. Artifact stores are created by root, not by each environment
 
-Status: Accepted (supersedes where [21](0021-per-environment-artifact-stores.md) put the stores; amends [17](0017-manual-prod-infrastructure-apply.md))
+Status: Accepted; the frontend bucket moved to env by [29](0029-env-terraform-kept.md)
 
 ## Context
 

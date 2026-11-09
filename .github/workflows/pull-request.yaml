@@ -19,9 +19,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # moon decides whether a diff reaches the Terraform root via `moon query affected`. There is no
-  # blanket .github/** glob here because none is needed: deploy-root:plan's own `inputs` already
-  # lists the exact composite actions and workflow files its job depends on.
+  # moon decides which Terraform deployment(s) a diff reaches via `moon query affected`. There is
+  # no blanket .github/** glob here because none is needed: every deploy-{root,staging,prod}:plan
+  # task's own `inputs` already lists the exact composite actions and workflow files that
+  # environment's job depends on.
   changed:
     # Skipped until infrastructure/root's bootstrap writes the repository variables (see
     # infrastructure/AGENTS.md), so an un-bootstrapped repository runs only the PR checks.
@@ -29,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       infrastructure-root: ${{ steps.moon.outputs.root }}
+      infrastructure-staging: ${{ steps.moon.outputs.staging }}
+      infrastructure-prod: ${{ steps.moon.outputs.prod }}
     steps:
       # moon needs full history to resolve the merge base - a shallow clone makes affected
       # detection "inaccurate or fail entirely" (https://moonrepo.dev/docs/guides/ci).
@@ -55,10 +58,12 @@ jobs:
           # superset, so an infrastructure/-only PR still plans every environment it reaches.
           MOON_BASE: origin/main
         run: |
-          # Left at the command's own defaults (no --upstream/--downstream): the explicit
-          # project://infra-root input is the intended signal.
+          # Left at the command's own defaults (no --upstream/--downstream): deploy-staging and
+          # deploy-prod's dependsOn on infra-env/deploy-root is apply ordering only, not an
+          # affectedness edge - the explicit project://infra-root / project://infra-env inputs are
+          # the intended signal.
           moon query affected > affected.json
-          for env in root; do
+          for env in root staging prod; do
             # .tasks is omitted entirely when nothing is affected (moon's Affected struct skips
             # empty maps on serialize), so `(.tasks // {})` guards against `has` erroring on null.
             val=$(jq -r --arg t "deploy-$env:plan" '(.tasks // {}) | has($t)' affected.json)
@@ -68,7 +73,7 @@ jobs:
   # The required moon checks, one leg each, so each keeps its own check name. `:taskId` (no
   # project prefix) is moon's "run in every project that has this task" scope
   # (https://moonrepo.dev/docs/concepts/target); a project without a given task is silently skipped.
-  # - lint-check: every lint/format/build task. `:format`/`:validate` reach infra-root's inherited
+  # - lint-check: every lint/format/build task. `:format`/`:validate` reach infra-root's and infra-env's inherited
   #   `terraform fmt -check` and `terraform validate` (.moon/tasks/terraform.yml);
   #   `:validate` is `runInCI: 'only'`, so this is the one place it runs at all.
   # - test: every project's tests.
@@ -124,4 +129,53 @@ jobs:
           config_directory: 'infrastructure/config/root'
           plan_dir: gs://${{ vars.GCP_ROOT_PROJECT }}-terraform-state/plans/root
           secrets: ${{ steps.secrets.outputs.secrets }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  # infrastructure/env/** is shared, so a change to it plans against both environments - see the
+  # `changed` job above.
+  infrastructure-staging:
+    needs: changed
+    if: needs.changed.outputs.infrastructure-staging == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.SERVICE_ACCOUNT }}
+      - uses: ./.github/actions/terraform-pull-request
+        with:
+          terraform_directory: 'infrastructure/env'
+          config_directory: 'infrastructure/config/staging'
+          plan_dir: gs://${{ vars.GCP_PROJECT_PREFIX }}-stag-terraform-state/plans/staging
+          secrets: |
+            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  infrastructure-prod:
+    needs: changed
+    if: needs.changed.outputs.infrastructure-prod == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.SERVICE_ACCOUNT }}
+      - uses: ./.github/actions/terraform-pull-request
+        with:
+          terraform_directory: 'infrastructure/env'
+          config_directory: 'infrastructure/config/prod'
+          secrets: |
+            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
           github_token: ${{ secrets.GITHUB_TOKEN }}

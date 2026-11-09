@@ -16,6 +16,7 @@ updates:
 
   - package-ecosystem: 'terraform'
     directories:
+      - '/infrastructure/env'
       - '/infrastructure/root'
     schedule:
       interval: 'weekly'

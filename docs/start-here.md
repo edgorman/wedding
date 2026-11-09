@@ -25,7 +25,7 @@ git fetch origin main
 moon ci --base origin/main
 ```
 
-This runs every check your branch affects. On a fresh branch nothing is affected yet; to run everything once, use `moon run :format :lint :typecheck :build :test`. `infra-root:validate` needs Terraform's registry; CI runs it if you can't.
+This runs every check your branch affects. On a fresh branch nothing is affected yet; to run everything once, use `moon run :format :lint :typecheck :build :test`. `infra-*:validate` needs Terraform's registry; CI runs it if you can't.
 
 ## 4. Make one change
 

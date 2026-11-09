@@ -69,9 +69,3 @@ variable "frontend_hostnames" {
   type        = map(string)
   default     = {}
 }
-
-variable "frontend_retention_days" {
-  description = "How many days a commit-SHA folder survives in the frontend bucket in each environment's bucket before the bucket's lifecycle rule deletes it. See the Artifact Stores section of infrastructure/AGENTS.md."
-  type        = number
-  default     = 90
-}

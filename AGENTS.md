@@ -13,7 +13,7 @@ Claude Code reads these files through its built-in [`agents-md`](https://github.
 
 A trunk-based repository: a static frontend, Terraform and repository governance in one place. There is no backend.
 
-- `infrastructure/` - Terraform. `root` holds the GCP projects, state buckets, WIF, frontend buckets and Cloudflare Pages projects, bootstrapped once; `config/root` holds its variables.
+- `infrastructure/` - Terraform. `env` is applied per environment with `config/staging` and `config/prod` (today just each frontend bucket); `root` holds the GCP projects, state buckets, WIF and Cloudflare Pages projects, bootstrapped once.
 - `services/frontend/` - the wedding site: a Vite/React app on Cloudflare Pages.
 - `.github/` - workflows, composite actions (`actions/`), and `settings.yml` (repository settings and rulesets, applied by the Probot Settings app).
 - `docs/` - [`start-here.md`](docs/start-here.md) and the decision records.
@@ -37,7 +37,7 @@ moon run services/frontend:test services/frontend:lint    # specific targets
 MOON_BASE=origin/main moon query affected                # what CI's `changed` job sees (no --base flag)
 ```
 
-Locally, `proto install && moon ci --base origin/main` is the whole setup. In a Claude Code cloud session, `.claude/hooks/session-start.sh` installs the pinned toolchain and exports `MOON_PLUGINS_USE_URL_DIST` and `MOON_TOOLCHAIN_FORCE_GLOBALS`, since `ghcr.io` isn't allowlisted. Everything then runs except `infra-root:validate` (`terraform init` needs `registry.terraform.io`); `moon setup` and `proto install` don't work there and aren't needed.
+Locally, `proto install && moon ci --base origin/main` is the whole setup. In a Claude Code cloud session, `.claude/hooks/session-start.sh` installs the pinned toolchain and exports `MOON_PLUGINS_USE_URL_DIST` and `MOON_TOOLCHAIN_FORCE_GLOBALS`, since `ghcr.io` isn't allowlisted. Everything then runs except `infra-root:validate`/`infra-env:validate` (`terraform init` needs `registry.terraform.io`); `moon setup` and `proto install` don't work there and aren't needed.
 
 ## Claude Code plugins
 

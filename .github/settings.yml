@@ -75,6 +75,8 @@ branches:
           - lint-check
           - test
           - infrastructure-root
+          - infrastructure-staging
+          - infrastructure-prod
           - pr-title
 
       # Stays false on purpose: Claude Code opens PRs as the repository owner, GitHub never lets an
