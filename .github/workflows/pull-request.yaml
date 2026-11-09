@@ -19,19 +19,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # moon decides which Terraform deployment(s) a diff reaches via `moon query affected`. There is
-  # no blanket .github/** glob here because none is needed: every deploy-{root,staging,prod}:plan
-  # task's own `inputs` already lists the exact composite actions and workflow files
-  # that environment's job depends on, so nothing is left for a repo-wide fallback to paper over.
+  # moon decides whether a diff reaches the Terraform root via `moon query affected`. There is no
+  # blanket .github/** glob here because none is needed: deploy-root:plan's own `inputs` already
+  # lists the exact composite actions and workflow files its job depends on.
   changed:
-    # Skipped until infrastructure/root's bootstrap writes the repository variables (docs/new-repo.md),
-    # so an un-bootstrapped repository - the template itself included - runs only the PR checks.
+    # Skipped until infrastructure/root's bootstrap writes the repository variables (see
+    # infrastructure/AGENTS.md), so an un-bootstrapped repository runs only the PR checks.
     if: vars.WORKLOAD_IDENTITY_PROVIDER != ''
     runs-on: ubuntu-latest
     outputs:
       infrastructure-root: ${{ steps.moon.outputs.root }}
-      infrastructure-staging: ${{ steps.moon.outputs.staging }}
-      infrastructure-prod: ${{ steps.moon.outputs.prod }}
     steps:
       # moon needs full history to resolve the merge base - a shallow clone makes affected
       # detection "inaccurate or fail entirely" (https://moonrepo.dev/docs/guides/ci).
@@ -58,29 +55,23 @@ jobs:
           # superset, so an infrastructure/-only PR still plans every environment it reaches.
           MOON_BASE: origin/main
         run: |
-          # Left at the command's own defaults (no --upstream/--downstream): the infra moon.yml files deliberately
-          # modelled deploy-staging/deploy-prod's dependsOn on infra-env/deploy-root as
-          # apply-ordering only, not an affectedness edge, so pulling in graph relations would mark
-          # them affected via the wrong mechanism - the explicit project://infra-root /
-          # project://infra-env inputs are the intended signal.
+          # Left at the command's own defaults (no --upstream/--downstream): the explicit
+          # project://infra-root input is the intended signal.
           moon query affected > affected.json
-          for env in root staging prod; do
+          for env in root; do
             # .tasks is omitted entirely when nothing is affected (moon's Affected struct skips
             # empty maps on serialize), so `(.tasks // {})` guards against `has` erroring on null.
             val=$(jq -r --arg t "deploy-$env:plan" '(.tasks // {}) | has($t)' affected.json)
             echo "$env=$val" >> "$GITHUB_OUTPUT"
           done
 
-  # The three required moon checks, one leg each, so each keeps its own check name. `:taskId` (no
+  # The required moon checks, one leg each, so each keeps its own check name. `:taskId` (no
   # project prefix) is moon's "run in every project that has this task" scope
   # (https://moonrepo.dev/docs/concepts/target); a project without a given task is silently skipped.
-  # - lint-check: every lint/format/build task. `:format`/`:validate` reach infra-root/infra-env's
-  #   inherited `terraform fmt -check` and `terraform validate` (.moon/tasks/terraform.yml);
+  # - lint-check: every lint/format/build task. `:format`/`:validate` reach infra-root's inherited
+  #   `terraform fmt -check` and `terraform validate` (.moon/tasks/terraform.yml);
   #   `:validate` is `runInCI: 'only'`, so this is the one place it runs at all.
-  # - test: every project's tests (a shared package still reaches its dependents via each test
-  #   task's own `inputs`, e.g. `project://packages/protos`) plus the image, so a broken
-  #   image build fails the PR rather than the job that publishes it.
-  # - protos-drift: packages/protos:drift, `buf generate` re-run and diffed.
+  # - test: every project's tests.
   moon:
     name: ${{ matrix.check }}
     strategy:
@@ -88,11 +79,9 @@ jobs:
       matrix:
         include:
           - check: lint-check
-            targets: ':format :lint :vet :typecheck :build :validate root:wire-types root:projects-covered root:go-version-sync'
+            targets: ':format :lint :typecheck :build :validate root:projects-covered'
           - check: test
-            targets: ':test services/backend:image'
-          - check: protos-drift
-            targets: 'packages/protos:drift'
+            targets: ':test'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -103,20 +92,6 @@ jobs:
         with:
           auto-install: true
           cache: false # see `changed`'s identical setup step above for why
-      # internal/repository/firestore's emulator tests skip unless FIRESTORE_EMULATOR_HOST is set.
-      # The jar is the one `gcloud emulators firestore` runs, fetched directly (checksum from
-      # firebase-tools' downloadableEmulatorInfo.json) rather than through a gcloud component
-      # install; it needs Java 21, which the runner image ships beside its default.
-      - name: Start the Firestore emulator
-        if: matrix.check == 'test'
-        shell: bash
-        run: |
-          curl -fsSL -o "$RUNNER_TEMP/firestore-emulator.jar" \
-            https://storage.googleapis.com/firebase-preview-drop/emulator/cloud-firestore-emulator-v1.22.0.jar
-          echo "9b6498b7f62714d67f48f59b3818883cd682dbcd46b9f59511de81c97bb5166c  $RUNNER_TEMP/firestore-emulator.jar" | sha256sum -c -
-          nohup "$JAVA_HOME_21_X64/bin/java" -jar "$RUNNER_TEMP/firestore-emulator.jar" --host=127.0.0.1 --port=8081 > "$RUNNER_TEMP/firestore-emulator.log" 2>&1 &
-          timeout 60 bash -c 'until curl -sf http://127.0.0.1:8081 > /dev/null; do sleep 1; done'
-          echo 'FIRESTORE_EMULATOR_HOST=127.0.0.1:8081' >> "$GITHUB_ENV"
       - name: moon ci
         shell: bash
         run: moon ci ${{ matrix.targets }}
@@ -150,57 +125,3 @@ jobs:
           plan_dir: gs://${{ vars.GCP_ROOT_PROJECT }}-terraform-state/plans/root
           secrets: ${{ steps.secrets.outputs.secrets }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  # infrastructure/env/** is shared, so a change to it plans against both environments - see the
-  # `changed` job above.
-  infrastructure-staging:
-    needs: changed
-    if: needs.changed.outputs.infrastructure-staging == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
-      - uses: ./.github/actions/terraform-pull-request
-        with:
-          terraform_directory: 'infrastructure/env'
-          config_directory: 'infrastructure/config/staging'
-          plan_dir: gs://${{ vars.GCP_PROJECT_PREFIX }}-stag-terraform-state/plans/staging
-          # One client ID, defined in infrastructure/root, serves every environment.
-          secrets: |
-            TF_VAR_google_client_id=${{ vars.GOOGLE_CLIENT_ID }}
-            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  infrastructure-prod:
-    needs: changed
-    if: needs.changed.outputs.infrastructure-prod == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
-      - uses: ./.github/actions/terraform-pull-request
-        with:
-          terraform_directory: 'infrastructure/env'
-          config_directory: 'infrastructure/config/prod'
-          # One client ID, defined in infrastructure/root, serves every environment.
-          secrets: |
-            TF_VAR_google_client_id=${{ vars.GOOGLE_CLIENT_ID }}
-            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-

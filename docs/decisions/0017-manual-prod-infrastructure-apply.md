@@ -1,6 +1,6 @@
 # 17. A manual prod apply, for bootstrapping only
 
-Status: Accepted
+Status: Superseded by [28](0028-static-site-only.md)
 
 ## Context
 

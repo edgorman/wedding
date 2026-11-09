@@ -3,9 +3,6 @@ language: 'typescript'
 layer: 'application'
 stack: 'frontend'
 tags: ['typescript']
-# Full source path, not 'protos' - the workspace uses globFormat: 'source-path'.
-dependsOn: ['packages/protos']
-
 # .moon/toolchains.yml never enables the typescript toolchain workspace-wide (its sync rewrites
 # tsconfig project references, and these tsconfigs are hand-maintained) - restated here so this
 # project stays safe even if that ever changes elsewhere in the workspace.
@@ -16,7 +13,7 @@ toolchains:
 # depends on.
 
 fileGroups:
-  sources: ['src/**/*', 'public/**/*', 'e2e/**/*', 'index.html', 'vite.config.ts', 'playwright.config.ts']
+  sources: ['src/**/*', 'public/**/*', 'index.html', 'vite.config.ts']
   configs: ['package.json', 'package-lock.json', 'tsconfig*.json', '.oxlintrc.json']
 
 tasks:
@@ -36,9 +33,7 @@ tasks:
   test:
     command: 'npm test'
     deps: ['install']
-    # An external project input, not a dependsOn/-g relation: v2 --affected doesn't follow graph
-    # relations by default, and a .proto-only edit must still mark this task affected.
-    inputs: ['@group(sources)', '@group(configs)', 'project://packages/protos']
+    inputs: ['@group(sources)', '@group(configs)']
   build:
     command: 'npm run build'
     deps: ['install']

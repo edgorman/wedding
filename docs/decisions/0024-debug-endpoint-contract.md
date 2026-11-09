@@ -1,6 +1,6 @@
 # 24. The debug endpoint contract
 
-Status: Accepted, partly superseded
+Status: Superseded by [28](0028-static-site-only.md)
 
 ## Context
 

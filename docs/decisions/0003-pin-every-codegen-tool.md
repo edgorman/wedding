@@ -1,6 +1,6 @@
 # 3. Every codegen tool is pinned exactly
 
-Status: Accepted
+Status: Superseded by [28](0028-static-site-only.md)
 
 ## Context
 

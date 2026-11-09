@@ -9,7 +9,6 @@ Closes #<!-- optional: issue number this PR closes, e.g. Closes #123 -->
 <!-- Check all that apply; label the PR to match (see .github/settings.yml). -->
 
 - [ ] infrastructure
-- [ ] backend
 - [ ] frontend
 - [ ] ci
 

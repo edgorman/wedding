@@ -1,6 +1,6 @@
 # 7. Visibility is a string, not an enum
 
-Status: Accepted
+Status: Superseded by [28](0028-static-site-only.md)
 
 ## Context
 

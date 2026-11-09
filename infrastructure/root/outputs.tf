@@ -28,11 +28,6 @@ output "frontend_domains" {
   value       = { for k, v in cloudflare_pages_domain.frontend : k => v.name }
 }
 
-output "artifact_registry_repositories" {
-  description = "Full resource name of each environment's backend Artifact Registry repository"
-  value       = { for k, v in google_artifact_registry_repository.backend : k => v.name }
-}
-
 output "frontend_buckets" {
   description = "Name of each environment's frontend static-build bucket"
   value       = { for k, v in google_storage_bucket.frontend : k => v.name }

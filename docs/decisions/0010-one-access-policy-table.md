@@ -1,6 +1,6 @@
 # 10. One access policy table, closed by default
 
-Status: Accepted
+Status: Superseded by [28](0028-static-site-only.md)
 
 ## Context
 

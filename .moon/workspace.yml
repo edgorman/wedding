@@ -5,14 +5,10 @@ projects:
   globFormat: 'source-path'   # avoid folder-name ID collisions (v2.0+)
   globs:
     - 'services/*/moon.yml'
-    - 'packages/*/moon.yml'
   sources:
     root: '.'
     infra-root: 'infrastructure/root'
-    infra-env: 'infrastructure/env'
     deploy-root: 'infrastructure/config/root'
-    deploy-staging: 'infrastructure/config/staging'
-    deploy-prod: 'infrastructure/config/prod'
 
 vcs:
   client: 'git'

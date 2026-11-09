@@ -24,67 +24,6 @@ resource "google_project_iam_member" "github_actions_iam_admin" {
   member  = "serviceAccount:${google_service_account.github_actions.email}"
 }
 
-# The public-invoker binding in env/cloud_run.tf needs run.services.setIamPolicy.
-resource "google_project_iam_member" "github_actions_run_admin" {
-  for_each = local.all_projects
-
-  project = each.value.project_id
-  role    = "roles/run.admin"
-  member  = "serviceAccount:${google_service_account.github_actions.email}"
-}
-
-# google_firestore_database needs datastore.databases.create, which roles/editor omits.
-resource "google_project_iam_member" "github_actions_datastore_admin" {
-  for_each = local.all_projects
-
-  project = each.value.project_id
-  role    = "roles/datastore.admin"
-  member  = "serviceAccount:${google_service_account.github_actions.email}"
-}
-
-# google_firebase_project needs firebase.projects.update, which roles/editor omits.
-resource "google_project_iam_member" "github_actions_firebase_admin" {
-  for_each = local.all_projects
-
-  project = each.value.project_id
-  role    = "roles/firebase.admin"
-  member  = "serviceAccount:${google_service_account.github_actions.email}"
-}
-
-# backend_runtime_actas in env/cloud_run.tf needs iam.serviceAccounts.setIamPolicy, which is
-# distinct from actAs itself and covered by none of the roles above.
-resource "google_project_iam_member" "github_actions_service_account_admin" {
-  for_each = local.all_projects
-
-  project = each.value.project_id
-  role    = "roles/iam.serviceAccountAdmin"
-  member  = "serviceAccount:${google_service_account.github_actions.email}"
-}
-
-# Required by env/providers.tf's user_project_override, which redirects API quota off the root
-# project this service account lives in.
-resource "google_project_iam_member" "github_actions_service_usage_consumer" {
-  for_each = local.all_projects
-
-  project = each.value.project_id
-  role    = "roles/serviceusage.serviceUsageConsumer"
-  member  = "serviceAccount:${google_service_account.github_actions.email}"
-}
-
-# The backend repository's writer binding in artifact_stores.tf needs
-# artifactregistry.repositories.setIamPolicy, which roles/editor excludes. repoAdmin isn't enough
-# for this despite the name - it covers repository content administration (deleting images,
-# managing tags, cleanup policies) but not IAM policy on the repository itself; only
-# artifactregistry.admin reaches that, confirmed against staging still failing after repoAdmin
-# was granted and propagation delay was ruled out.
-resource "google_project_iam_member" "github_actions_artifact_registry_admin" {
-  for_each = local.all_projects
-
-  project = each.value.project_id
-  role    = "roles/artifactregistry.admin"
-  member  = "serviceAccount:${google_service_account.github_actions.email}"
-}
-
 # The frontend bucket's writer binding in artifact_stores.tf needs storage.buckets.setIamPolicy,
 # which roles/editor excludes the same way it excludes setIamPolicy on the resources above.
 # storage.buckets.create itself needs no extra grant - that part is already covered by editor.
@@ -135,15 +74,12 @@ locals {
   actions_variables = {
     WORKLOAD_IDENTITY_PROVIDER = google_iam_workload_identity_pool_provider.github_provider.name
     SERVICE_ACCOUNT            = google_service_account.github_actions.email
-    # One client ID for every environment: passed to infrastructure/env as TF_VAR_google_client_id
-    # and baked into the frontend build as VITE_GOOGLE_CLIENT_ID.
-    GOOGLE_CLIENT_ID   = var.google_client_id
-    GCP_ROOT_PROJECT   = var.gcp_provider_project_id
-    GCP_PROJECT_PREFIX = var.gcp_project_prefix
-    GCP_REGION         = var.gcp_provider_region
-    SITE_NAME          = var.site_name
-    STAGING_URL        = "https://${lookup(var.frontend_hostnames, "stag", cloudflare_pages_project.frontend["stag"].subdomain)}"
-    PRODUCTION_URL     = "https://${lookup(var.frontend_hostnames, "prod", cloudflare_pages_project.frontend["prod"].subdomain)}"
+    GCP_ROOT_PROJECT           = var.gcp_provider_project_id
+    GCP_PROJECT_PREFIX         = var.gcp_project_prefix
+    GCP_REGION                 = var.gcp_provider_region
+    SITE_NAME                  = var.site_name
+    STAGING_URL                = "https://${lookup(var.frontend_hostnames, "stag", cloudflare_pages_project.frontend["stag"].subdomain)}"
+    PRODUCTION_URL             = "https://${lookup(var.frontend_hostnames, "prod", cloudflare_pages_project.frontend["prod"].subdomain)}"
   }
 }
 

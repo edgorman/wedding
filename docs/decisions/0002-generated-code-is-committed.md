@@ -1,6 +1,6 @@
 # 2. Generated code is committed, next to the code that uses it
 
-Status: Accepted
+Status: Superseded by [28](0028-static-site-only.md)
 
 ## Context
 

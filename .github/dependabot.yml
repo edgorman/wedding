@@ -16,7 +16,6 @@ updates:
 
   - package-ecosystem: 'terraform'
     directories:
-      - '/infrastructure/env'
       - '/infrastructure/root'
     schedule:
       interval: 'weekly'
@@ -35,16 +34,5 @@ updates:
       - frontend
     groups:
       npm-deps:
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'gomod'
-    directory: '/services/backend'
-    schedule:
-      interval: 'weekly'
-    labels:
-      - backend
-    groups:
-      gomod-deps:
         patterns:
           - '*'

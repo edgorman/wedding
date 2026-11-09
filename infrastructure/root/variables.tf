@@ -53,12 +53,6 @@ variable "cloudflare_api_token" {
   sensitive   = true
 }
 
-variable "google_client_id" {
-  description = "Google OAuth 2.0 client ID for Google Sign-In, propagated to both services via the GOOGLE_CLIENT_ID Actions variable. Not a secret - it identifies the app."
-  type        = string
-  default     = ""
-}
-
 variable "site_name" {
   description = "Display name of the site, shown in page titles and link previews (the SITE_NAME Actions variable)"
   type        = string
@@ -76,14 +70,8 @@ variable "frontend_hostnames" {
   default     = {}
 }
 
-variable "backend_registry_keep_count" {
-  description = "How many of the most recent Artifact Registry versions the backend repository keeps in each environment's registry; everything older is deleted by the repository's cleanup_policies. See the Artifact Stores section of infrastructure/AGENTS.md for how this number was chosen."
-  type        = number
-  default     = 30
-}
-
 variable "frontend_retention_days" {
-  description = "How many days a commit-SHA folder survives in the frontend bucket in each environment's bucket before the bucket's lifecycle rule deletes it. See the Artifact Stores section of infrastructure/AGENTS.md for how this number was chosen."
+  description = "How many days a commit-SHA folder survives in the frontend bucket in each environment's bucket before the bucket's lifecycle rule deletes it. See the Artifact Stores section of infrastructure/AGENTS.md."
   type        = number
   default     = 90
 }

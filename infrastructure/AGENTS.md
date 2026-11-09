@@ -1,14 +1,14 @@
 # infrastructure
 
-Terraform roots: `env` (applied per environment from `config/staging` and `config/prod`) and `root` (shared, bootstrapped once). How they are planned and applied is in `.github/AGENTS.md`. Reasoning for each rule is in the linked record under `docs/decisions/`.
+One Terraform root, `root` (shared, bootstrapped once, variables in `config/root`). How they are planned and applied is in `.github/AGENTS.md`. Reasoning for each rule is in the linked record under `docs/decisions/`.
 
 ## Cloud Infrastructure & Security Isolation
 
-- Staging and prod are separate GCP projects (`<prefix>-stag`, `<prefix>-prod`), and every resource carries its environment suffix (`backend-stag`) ([19](../docs/decisions/0019-one-gcp-project-per-environment.md)).
+- Staging and prod are separate GCP projects (`<prefix>-stag`, `<prefix>-prod`), ([19](../docs/decisions/0019-one-gcp-project-per-environment.md)).
 
 ### Root Environment
 
-- `infrastructure/root` owns the root project, both environment projects, every state bucket, every environment's artifact stores, the WIF pool and provider, shared DNS, the baseline APIs and the GitHub Actions variables the workflows read. Its first apply is the only manual one (`docs/new-repo.md`); everything after goes through CI ([19](../docs/decisions/0019-one-gcp-project-per-environment.md)).
+- `infrastructure/root` owns the root project, both environment projects, every state bucket, every environment's frontend bucket, the WIF pool and provider, shared DNS, the baseline APIs and the GitHub Actions variables the workflows read. Its first apply is the only manual one (`make init` in `infrastructure/root`, with the GitHub and Cloudflare tokens passed as `TF_VAR_*`); everything after goes through CI ([19](../docs/decisions/0019-one-gcp-project-per-environment.md)).
 
 ### IAM & Authentication
 
@@ -18,13 +18,10 @@ Terraform roots: `env` (applied per environment from `config/staging` and `confi
 
 ### Artifact Stores
 
-- Each environment has its own registry (`backend`) and bucket (`<gcp-project-id>-frontend`), written once by the job that built the artifact and read only within that project ([21](../docs/decisions/0021-per-environment-artifact-stores.md)).
-- Root creates them (`root/artifact_stores.tf`), because every merge writes to every environment's stores and env only reaches prod on promotion. Anything a merge writes into every environment goes in root, never env ([27](../docs/decisions/0027-artifact-stores-in-root.md)).
-- Retention: keep the newest `backend_registry_keep_count` versions per image plus every `release-` tag; delete frontend folders after `frontend_retention_days`. Both stay dry-run until the output is reviewed ([22](../docs/decisions/0022-artifact-retention.md)).
+- Each environment has its own bucket (`<gcp-project-id>-frontend`), written once by the job that built the artifact and read only within that project ([21](../docs/decisions/0021-per-environment-artifact-stores.md)).
+- Root creates them (`root/artifact_stores.tf`), because every merge writes to every environment's bucket. Anything a merge writes into every environment goes in root ([27](../docs/decisions/0027-artifact-stores-in-root.md)).
+- Retention: delete frontend folders after `frontend_retention_days` ([22](../docs/decisions/0022-artifact-retention.md)).
 
-## Monitoring & Alerting
+### Cloudflare
 
-- Watch both environments with the same `env/monitoring.tf`; alert on Cloud Run metrics, not log-based ones, except for a route that spends money ([23](../docs/decisions/0023-monitoring-on-cloud-run-metrics.md)).
-- The uptime check matches `"status":"ok"` on `/health` every 15 minutes ([23](../docs/decisions/0023-monitoring-on-cloud-run-metrics.md)).
-- A log-based metric's filter and the log message it matches change together ([23](../docs/decisions/0023-monitoring-on-cloud-run-metrics.md)).
-- Every threshold is a variable in `env/variables.tf` with a default and description, and every policy has a `documentation` block ([23](../docs/decisions/0023-monitoring-on-cloud-run-metrics.md)).
+- There is no custom domain yet: the sites are served at `https://edward-katie-wedding-<stag|prod>.pages.dev`. To add one, set `cloudflare_zone` and `frontend_hostnames` in `config/root/terraform.tfvars`.
