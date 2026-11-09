@@ -1,0 +1,48 @@
+:root {
+  --paper: #f6f4ef;
+  --ink: #3b3a36;
+  --accent: #8a6a4f;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 2rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.church {
+  width: min(22rem, 80vw);
+  height: auto;
+  mix-blend-mode: multiply;
+}
+
+.names {
+  margin: 1.5rem 0 0.5rem;
+  font-family: 'Great Vibes', cursive;
+  font-weight: 400;
+  font-size: clamp(2.75rem, 10vw, 4.5rem);
+  color: var(--accent);
+  word-spacing: 0.15em;
+}
+
+.venue,
+.date {
+  margin: 0.25rem 0;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(1.25rem, 4vw, 1.75rem);
+  letter-spacing: 0.12em;
+}
+
+.date {
+  font-size: clamp(1.1rem, 3.5vw, 1.4rem);
+}
