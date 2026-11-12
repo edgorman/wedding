@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" fill="none" stroke="#2f2a2a" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="60" cy="44" r="5"/><circle cx="60" cy="44" r="2" stroke-width=".8"/>
+<path transform="rotate(0 60 44)" d="M60 38C55 29 56 15 60 11C64 15 65 29 60 38"/>
+<path transform="rotate(36 60 44)" d="M60 38C55 29 56 15 60 11C64 15 65 29 60 38"/>
+<path transform="rotate(72 60 44)" d="M60 38C55 29 56 15 60 11C64 15 65 29 60 38"/>
+<path transform="rotate(108 60 44)" d="M60 38C55 29 56 15 60 11C64 15 65 29 60 38"/>
+<path transform="rotate(144 60 44)" d="M60 38C55 29 56 15 60 11C64 15 65 29 60 38"/>
+<path transform="rotate(180 60 44)" d="M60 38C55 29 56 15 60 11C64 15 65 29 60 38"/>
+<path transform="rotate(216 60 44)" d="M60 38C55 29 56 15 60 11C64 15 65 29 60 38"/>
+<path transform="rotate(252 60 44)" d="M60 38C55 29 56 15 60 11C64 15 65 29 60 38"/>
+<path transform="rotate(288 60 44)" d="M60 38C55 29 56 15 60 11C64 15 65 29 60 38"/>
+<path transform="rotate(324 60 44)" d="M60 38C55 29 56 15 60 11C64 15 65 29 60 38"/>
+<path d="M60 58C58 75 62 92 60 114"/><path d="M60 90C70 86 78 88 82 78C72 76 64 80 60 90"/><path d="M62 92C70 90 72 82 70 78" stroke-width=".7"/>
+</svg>
