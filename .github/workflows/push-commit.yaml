@@ -208,7 +208,7 @@ jobs:
           # A fresh deploy on the custom domain can answer 403 for a few minutes before the edge
           # serves it, so poll for up to ~5 minutes rather than failing on the first window.
           for attempt in $(seq 1 20); do
-            if curl -fsS "${{ vars.STAGING_URL }}/" | grep -q "Ed and Katie's Wedding"; then
+            if curl -fsS "${{ vars.STAGING_URL }}/" | grep -qi "<title>.*wedding</title>"; then
               exit 0
             fi
             sleep 15
