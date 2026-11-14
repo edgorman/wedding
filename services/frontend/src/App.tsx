@@ -10,7 +10,7 @@ function App() {
         src={church}
         alt="Watercolour drawing of St James' Church, Shere"
       />
-      <h1 className="names">Ed &amp; Katie&apos;s Wedding</h1>
+      <h1 className="names">Katie &amp; Ed&apos;s Wedding</h1>
       <p className="venue">
         <a
           href="https://maps.app.goo.gl/LxyWMHvFjjvrS6j67"
