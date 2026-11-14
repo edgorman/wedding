@@ -205,11 +205,13 @@ jobs:
     steps:
       - name: Staging site serves the page
         run: |
-          for attempt in 1 2 3 4 5; do
+          # A fresh deploy on the custom domain can answer 403 for a few minutes before the edge
+          # serves it, so poll for up to ~5 minutes rather than failing on the first window.
+          for attempt in $(seq 1 20); do
             if curl -fsS "${{ vars.STAGING_URL }}/" | grep -q "Ed and Katie's Wedding"; then
               exit 0
             fi
-            sleep 10
+            sleep 15
           done
           echo "::error::${{ vars.STAGING_URL }} did not serve the expected page"
           exit 1
