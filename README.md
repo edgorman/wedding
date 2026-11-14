@@ -19,7 +19,7 @@ New here? [`docs/start-here.md`](docs/start-here.md) goes from a fresh clone to 
 | `.github` | Workflows and composite actions: PR checks, staging deploy on merge, release promotion to prod |
 | `docs/decisions` | Why things are the way they are, one decision per file |
 
-Every merge to `main` deploys to staging at `https://edward-katie-wedding-stag.pages.dev`; production releases (`https://edward-katie-wedding-prod.pages.dev`) are promoted from there. There is no custom domain yet. Nothing is ever applied or deployed by hand.
+Every merge to `main` deploys to staging at `https://dev.katieanded.com`; production releases (`https://katieanded.com`) are promoted from there. Nothing is ever applied or deployed by hand.
 
 ## Developing with moon
 

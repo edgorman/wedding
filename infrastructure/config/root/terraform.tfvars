@@ -8,10 +8,10 @@ github_repository_owner = "edgorman"
 github_repository_name  = "wedding"
 
 site_name = "Ed and Katie's Wedding"
-# No custom domain: the frontends are served at https://edward-katie-wedding-stag.pages.dev and
-# https://edward-katie-wedding-prod.pages.dev. To add one, set cloudflare_zone and frontend_hostnames, e.g.
-# cloudflare_zone    = "example.com"
-# frontend_hostnames = { stag = "staging.example.com", prod = "example.com" }
+# Custom domain, served through Cloudflare Pages. The zone must exist in the Cloudflare account.
+# The pages.dev subdomains (https://edward-katie-wedding-<stag|prod>.pages.dev) keep working too.
+cloudflare_zone    = "katieanded.com"
+frontend_hostnames = { stag = "dev.katieanded.com", prod = "katieanded.com" }
 
 # The following are sensitive/unknown initially and thus have no default
 # github_provider_token

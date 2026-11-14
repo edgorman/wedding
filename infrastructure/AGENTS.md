@@ -29,4 +29,4 @@ Two Terraform roots: `env` (applied per environment from `config/staging` and `c
 
 ### Cloudflare
 
-- There is no custom domain yet: the sites are served at `https://edward-katie-wedding-<stag|prod>.pages.dev`. To add one, set `cloudflare_zone` and `frontend_hostnames` in `config/root/terraform.tfvars`.
+- Custom domain: staging is `https://dev.katieanded.com` and prod is `https://katieanded.com`, set via `cloudflare_zone` and `frontend_hostnames` in `config/root/terraform.tfvars` (the `*.pages.dev` subdomains still work).
