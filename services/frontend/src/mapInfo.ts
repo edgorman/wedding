@@ -30,7 +30,7 @@ export const spots: Record<'church' | 'bus' | 'venue', Spot> = {
     linkText: 'Open the route in Google Maps',
     href: directions,
     label: 'About the guest bus',
-    box: { left: '50%', top: '52%', width: '13.5%', height: '7%' },
+    box: { left: '47.5%', top: '50%', width: '18.5%', height: '11%' },
   },
   venue: {
     title: 'Burrows Lea Country House',
