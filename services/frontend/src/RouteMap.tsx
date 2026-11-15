@@ -1,13 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { art } from './artwork'
 import { directionsUrl, spots } from './mapInfo'
-import { houses, landmarks, MAP_H, MAP_W, route, trees, type Box } from './mapLayout'
+import { houses, landmarks, MAP_H, MAP_W, MAP_X, route, trees, type Box } from './mapLayout'
 
 type SpotKey = keyof typeof spots
 
 // Position an icon on the map canvas, as percentages of the map's width and height.
 const place = ([l, t, w, h]: Box): CSSProperties => ({
-  left: `${(l / MAP_W) * 100}%`,
+  left: `${((l - MAP_X) / MAP_W) * 100}%`,
   top: `${(t / MAP_H) * 100}%`,
   width: `${(w / MAP_W) * 100}%`,
   height: `${(h / MAP_H) * 100}%`,
@@ -77,34 +77,42 @@ export function RouteMap() {
 
   return (
     <div className="mapwrap" ref={wrapRef}>
-      <a
-        className="map"
-        href={directionsUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Open directions from St James' Church to Burrows Lea Country House in Google Maps"
-      >
-        {drawing}
-      </a>
-      {(Object.keys(spots) as SpotKey[]).map((k) => (
-        <button
-          key={k}
-          type="button"
-          className="hot"
-          ref={(el) => {
-            btnRefs.current[k] = el
-          }}
-          style={spots[k].box}
-          aria-label={spots[k].label}
-          aria-expanded={open === k}
-          onClick={(e) => {
-            e.stopPropagation()
-            setOpen(open === k ? null : k)
-          }}
-        >
-          <i aria-hidden="true">i</i>
-        </button>
-      ))}
+      {/* The canvas is the whole wide drawing, centred; the window crops it to what fits the screen. */}
+      <div className="mapwindow">
+        <div className="mapcanvas">
+          <a
+            className="map"
+            href={directionsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open directions from St James' Church to Burrows Lea Country House in Google Maps"
+          >
+            {drawing}
+          </a>
+          {(Object.keys(spots) as SpotKey[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              className="hot"
+              ref={(el) => {
+                btnRefs.current[k] = el
+              }}
+              style={place(spots[k].box)}
+              aria-label={spots[k].label}
+              aria-expanded={open === k}
+              onClick={(e) => {
+                e.stopPropagation()
+                setOpen(open === k ? null : k)
+              }}
+            >
+              <i aria-hidden="true">i</i>
+            </button>
+          ))}
+        </div>
+      </div>
+      <svg className="mapframe" aria-hidden="true">
+        <rect width="100%" height="100%" rx="5" />
+      </svg>
       {spot && (
         <div className="pop" role="dialog" aria-label={spot.title} ref={popRef} style={popPos}>
           <button type="button" className="pop-x" aria-label="Close" onClick={() => setOpen(null)}>
