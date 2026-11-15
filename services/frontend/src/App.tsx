@@ -22,13 +22,39 @@ const place = ([l, t, w, h]: Box): CSSProperties => ({
 const wavePath =
   'M500 0 C500 42.5 550 42.5 550 85 C550 170 450 170 450 255 C450 340 550 340 550 425 C550 510 450 510 450 595 C450 680 550 680 550 765 C550 850 450 850 450 935 C450 977.5 500 977.5 500 1020'
 
+const atBottom = () => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2
+
 function App() {
   const [bannerOpen, setBannerOpen] = useState(true)
   const [open, setOpen] = useState<SpotKey | null>(null)
   const [popPos, setPopPos] = useState({ left: 8, top: 8 })
+  const [bottom, setBottom] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const btnRefs = useRef<Partial<Record<SpotKey, HTMLButtonElement | null>>>({})
+
+  // The chevron is hidden once the page is scrolled all the way down.
+  useEffect(() => {
+    const update = () => setBottom(atBottom())
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+
+  // Scroll down one viewport height, or to the next section if that comes first.
+  const scrollDown = () => {
+    const y = window.scrollY
+    let target = y + window.innerHeight
+    document.querySelectorAll('[data-section]').forEach((s) => {
+      const top = s.getBoundingClientRect().top + y
+      if (top > y + 2 && top < target) target = top
+    })
+    window.scrollTo({ top: target, behavior: 'smooth' })
+  }
 
   // Place the panel under the pressed hotspot, or above it when there is no room below.
   useEffect(() => {
@@ -75,17 +101,22 @@ function App() {
         </div>
       )}
 
-      <header className="hero">
+      <header className="hero" data-section>
         <img className="church" src={art('hero/church')} alt="Watercolour drawing of St James' Church, Shere" />
         <h1 className="names">Katie &amp; Ed&apos;s Wedding</h1>
+        <p className="sub">
+          <a className="churchlink" href={spots.church.href} target="_blank" rel="noopener noreferrer">
+            St James&apos; Church, Shere
+          </a>
+        </p>
         <p>
           <a className="datelink" href={calendarUrl} target="_blank" rel="noopener noreferrer">
-            Saturday 16th October 2027
+            Saturday, 16th October 2027
           </a>
         </p>
       </header>
 
-      <section>
+      <section data-section>
         <h2>The day</h2>
         <ol className="timeline">
           <svg className="wave" viewBox="0 0 1000 1020" preserveAspectRatio="none" aria-hidden="true">
@@ -111,7 +142,7 @@ function App() {
         </ol>
       </section>
 
-      <section>
+      <section data-section>
         <h2>The map</h2>
         <div className="mapwrap" ref={wrapRef}>
           <a
@@ -180,13 +211,23 @@ function App() {
         </p>
       </section>
 
-      <p className="closing">We can&apos;t wait to see you all!</p>
-      <figure className="couple">
-        <div className="oval">
-          <img className="photo" src={art('couple/photo')} alt="Katie and Ed laughing together" />
-          <img className="frame" src={art('couple/frame')} alt="" />
-        </div>
-      </figure>
+      <footer className="end" data-section>
+        <p className="closing">We can&apos;t wait to see you all!</p>
+        <figure className="couple">
+          <div className="oval">
+            <img className="photo" src={art('couple/photo')} alt="Katie and Ed laughing together" />
+            <img className="frame" src={art('couple/frame')} alt="" />
+          </div>
+        </figure>
+      </footer>
+
+      {!bottom && (
+        <button type="button" className="more" aria-label="Scroll down" onClick={scrollDown}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M5 9l7 7 7-7" />
+          </svg>
+        </button>
+      )}
     </main>
   )
 }
