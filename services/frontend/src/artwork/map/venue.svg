@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="305.3 622.8 133.9 80.2" fill="none" stroke="#3b3a36" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+<defs><filter id="wob2" filterUnits="userSpaceOnUse" x="305.3" y="622.8" width="133.9" height="80.2"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/></filter></defs>
+<g filter="url(#wob2)">
+<g transform="translate(348 696) scale(1.275 .92)" stroke-width="1.7">
+<path d="M-24 0V-14L-17 -22L-10 -14V0Z" fill="#6b4a3a" stroke-width="1.6"/><path d="M-26 -13L-17 -26L-8 -13Z" fill="#6b4a3a" stroke-width="1.6"/>
+<path d="M-8 0V-36H36V0Z" fill="#dcc596"/>
+<path d="M-10 -34L-1 -52L12 -42L22 -62L34 -42L40 -34Z" fill="#a8553a"/>
+<path d="M8 -36L22 -62L36 -36Z" fill="#a8553a" stroke-width="1.8"/>
+<path d="M14 -36L22 -52L30 -36Z" fill="#e6c89a" stroke-width="1.4"/>
+<path d="M22 -52V-36M17 -42H27" stroke="#8a6446" stroke-width="1.3"/>
+<path d="M-1 -52L-8 -36H10Z" fill="#b4623e" stroke-width="1.6"/>
+<path d="M-6 -58V-46H0V-58ZM18 -72V-58H25V-72ZM36 -56V-44H42V-56Z" fill="#b0553a" stroke-width="1.6"/>
+<path d="M-4 -58H2M16 -72H27M34 -56H44" stroke-width="2.4"/>
+<path d="M-2 -26V-16Q1 -12 4 -16V-26ZM12 -26V-16Q15 -12 18 -16V-26ZM26 -26V-16Q29 -12 32 -16V-26Z" fill="#8f90a6" stroke-width="1.3"/>
+<path d="M-2 -21H4M12 -21H18M26 -21H32" stroke-width="1"/>
+<path d="M0 0V-9Q4 -13 8 -9V0Z" fill="#8a6446" stroke-width="1.5"/>
+<path d="M22 0V-9Q26 -13 30 -9V0Z" fill="#8a6446" stroke-width="1.5"/>
+<path d="M38 0V-28H62V0Z" fill="#dcc596"/>
+<path d="M35 -27L50 -50L65 -27Z" fill="#a8553a"/>
+<path d="M44 -30V-22H50V-30ZM53 -30V-22H59V-30Z" fill="#8f90a6" stroke-width="1.2"/>
+<path d="M44 -40L50 -50L56 -40Z" fill="#e6c89a" stroke-width="1.2"/>
+<path d="M56 -38V-52H62V-40Z" fill="#b0553a" stroke-width="1.6"/>
+<path d="M-28 0H66" stroke-width="1.6"/></g>
+</g>
+</svg>

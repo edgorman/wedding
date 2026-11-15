@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" stroke="#3b3a36" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<defs><filter id="wobble" filterUnits="userSpaceOnUse" x="-10" y="-10" width="100" height="100"><feTurbulence type="fractalNoise" baseFrequency="0.0285" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.68"/></filter></defs>
+<g filter="url(#wobble)">
+  <path d="M40 6V20"/>
+  <circle cx="40" cy="38" r="18"/>
+  <path d="M22 38H58M40 20V56M26 28Q40 34 54 28M26 48Q40 42 54 48"/>
+  <path d="M66 16l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5zM14 58l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" stroke="#8a6a4f"/>
+</g>
+</svg>
