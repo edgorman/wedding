@@ -83,12 +83,7 @@ function App() {
 
       <footer className="end" data-section>
         <p className="closing">We can&apos;t wait to see you all!</p>
-        <img
-          className="dance"
-          src={art('couple/dancing')}
-          alt="Drawing of a groom and bride dancing"
-          loading="lazy"
-        />
+        <img className="dance" src={art('couple/dancing')} alt="Drawing of a groom and bride dancing" />
       </footer>
 
       <ScrollChevron />

@@ -21,7 +21,6 @@ const drawing = (
       className="base"
       src={art('map/map')}
       alt="Hand-drawn map of the bus route from St James' Church in Shere to Burrows Lea Country House"
-      loading="lazy"
     />
     <span className="icons" aria-hidden="true">
       {houses.map((b, i) => (

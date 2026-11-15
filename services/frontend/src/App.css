@@ -63,6 +63,9 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 /* Map */
 .map { position: relative; display: block; text-decoration: none; color: inherit; margin-bottom: 1rem; }
 .mapwrap { position: relative; max-width: 540px; margin: 0 auto; }
+/* Without a width the map shrinks to the drawing's default 300px. On wider screens it is as large as fits on one
+   screen with its heading and link, between 380px and 540px wide (the map is 2:3, the rest of the section ~15rem). */
+@media (min-width: 561px) { .mapwrap { width: clamp(380px, (100vh - 15rem) * 2 / 3, 540px); } }
 .map .base { width: 100%; height: auto; display: block; }
 /* The small drawn map icons sit over the base map, clipped to its rounded frame. */
 .map .icons { position: absolute; inset: 0; clip-path: inset(.889% 1.333% round 1.712% / 1.131%); pointer-events: none; }
