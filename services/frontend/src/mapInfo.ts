@@ -1,10 +1,8 @@
-const directions =
+export const directionsUrl =
   "https://www.google.com/maps/dir/?api=1&origin=St+James'+Church,+Shere&destination=Burrows+Lea+Country+House&travelmode=driving"
 
 export const calendarUrl =
   'https://calendar.google.com/calendar/render?action=TEMPLATE&text=Katie+%26+Ed%27s+Wedding&dates=20271016T130000/20271016T230000&ctz=Europe/London&location=St+James%27+Church,+Shere&details=Ceremony+at+1:00+pm+at+St+James%27+Church,+Shere.+Reception+at+Burrows+Lea+Country+House.'
-
-export const directionsUrl = directions
 
 export type Spot = {
   title: string
@@ -28,7 +26,7 @@ export const spots: Record<'church' | 'bus' | 'venue', Spot> = {
     title: 'The guest bus',
     lines: ['Leaves the church at 2:30 pm and takes about 15 minutes to reach Burrows Lea.'],
     linkText: 'Open the route in Google Maps',
-    href: directions,
+    href: directionsUrl,
     label: 'About the guest bus',
     box: { left: '47.5%', top: '50%', width: '18.5%', height: '11%' },
   },
