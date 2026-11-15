@@ -2,69 +2,85 @@
   --paper: #edece9;
   --ink: #3b3a36;
   --accent: #8a6a4f;
+  --soft: #7a766d;
+  --display: 'Cormorant Garamond', Georgia, serif;
+  --hand: 'Caveat', 'Segoe Script', cursive;
+  color-scheme: light;
 }
-
 body {
   margin: 0;
   background: var(--paper) url('./assets/paper.jpg');
   color: var(--ink);
+  font-family: var(--display);
+  font-size: 1.2rem;
+  line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-
-.page {
-  min-height: 100vh;
-  min-height: 100dvh;
-  box-sizing: border-box;
-  padding: 2rem 1rem 3rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+.page { max-width: 52rem; margin: 0 auto; }
+.hero {
+  padding-block: 2.5rem 3.5rem;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
 }
+.church { width: min(22rem, 80vw); height: auto; }
+.names { margin: 1.5rem 0 .5rem; font-weight: 400; font-size: clamp(2.25rem, 8vw, 3.5rem); letter-spacing: .06em; color: var(--accent); }
+.hero p { margin: .25rem 0; letter-spacing: .12em; font-size: clamp(1.1rem, 3.5vw, 1.5rem); }
+.datelink { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--accent); padding-bottom: 2px; }
+.datelink:hover, .datelink:focus-visible { color: var(--accent); }
+.hero .sub { color: var(--soft); font-size: clamp(1rem, 3vw, 1.2rem); letter-spacing: .08em; }
 
-.church {
-  width: min(22rem, 80vw);
-  height: auto;
-}
+.wip { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 20; box-shadow: 0 2px 8px rgba(59,58,54,.12); display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; padding: .6rem .6rem .6rem 1rem; border: 1.5px dashed var(--accent); border-radius: 6px; background: #f4f2ed; color: var(--ink); font-size: 1.05rem; }
+.wip strong { font-weight: 500; color: var(--accent); letter-spacing: .04em; }
+.wip-x { flex: none; width: 2rem; height: 2rem; border: 0; border-radius: 50%; background: transparent; color: var(--ink); font-size: 1.5rem; line-height: 1; cursor: pointer; }
+.wip-x:hover, .wip-x:focus-visible { background: rgba(138,106,79,.18); outline: none; }
+h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3em; text-transform: uppercase; color: var(--accent); margin: 0 0 2.5rem; }
 
-.names {
-  margin: 1.5rem 0 0.5rem;
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-weight: 400;
-  font-size: clamp(2.25rem, 8vw, 3.5rem);
-  letter-spacing: 0.06em;
-  color: var(--accent);
-}
+/* Timeline: vertical, events stacked; the line waves left and right as it runs down the page */
+.timeline { position: relative; list-style: none; margin: 0 0 5rem; padding: 0; height: 1020px; }
+.timeline .wave { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wave path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 2 8; stroke-linecap: round; opacity: .8; vector-effect: non-scaling-stroke; }
+.ev { position: absolute; left: 0; right: 0; height: 170px; top: var(--row); }
+.ev .dot { position: absolute; top: 85px; left: calc(50% + var(--dx)); width: 11px; height: 11px; margin: -6px 0 0 -6px; border: 1.5px solid var(--accent); border-radius: 50%; background: var(--paper); }
+.ev .txt { position: absolute; top: 50%; transform: translateY(-50%); width: calc(50% - 5% - 22px); }
+.ev .pic { position: absolute; top: 50%; transform: translateY(-50%); }
+/* dot bulges right: text right, drawing left */
+.ev.r .txt { left: calc(50% + 5% + 22px); text-align: left; }
+.ev.r .pic { right: calc(50% + 5% + 22px); }
+.ev.l .txt { right: calc(50% + 5% + 22px); text-align: right; }
+.ev.l .pic { left: calc(50% + 5% + 22px); }
+.time { font-family: var(--hand); font-size: 1.5rem; color: var(--accent); line-height: 1; }
+.what { margin: .15rem 0 0; font-size: 1.3rem; line-height: 1.2; }
+.where { margin: .2rem 0 0; color: var(--soft); font-style: italic; font-size: 1.05rem; line-height: 1.25; }
+.pic svg { width: 76px; height: 76px; display: block; fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pic .tint { stroke: var(--accent); }
 
-.venue,
-.date {
-  margin: 0.25rem 0;
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: clamp(1.25rem, 4vw, 1.75rem);
-  letter-spacing: 0.12em;
-}
+/* Map */
+.map { display: block; text-decoration: none; color: inherit; margin-bottom: 1rem; }
+.mapwrap { position: relative; max-width: 540px; margin: 0 auto; }
+.map img { width: 100%; height: auto; display: block; }
+.map:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
+.hot { position: absolute; padding: 0; border: 1.5px dashed transparent; border-radius: 10px; background: transparent; cursor: pointer; z-index: 2; }
+.hot:hover, .hot:focus-visible, .hot[aria-expanded="true"] { border-color: var(--accent); background: rgba(138,106,79,.08); outline: none; }
+.hot i { position: absolute; top: -9px; right: -9px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--accent); background: #f4f2ed; color: var(--accent); font: italic 600 .8rem/15px var(--display); text-align: center; }
+.pop { position: absolute; z-index: 5; width: min(270px, calc(100% - 16px)); box-sizing: border-box; padding: 1rem 1.1rem 1rem; border: 1.5px solid var(--ink); border-radius: 8px; background: #f8f6f1; box-shadow: 0 6px 18px rgba(59,58,54,.22); font-size: 1.05rem; line-height: 1.35; }
+.pop h3 { margin: 0 1.6rem .35rem 0; font-weight: 500; font-size: 1.25rem; color: var(--accent); line-height: 1.15; }
+.pop p { margin: .3rem 0; }
+.pop a { display: inline-block; margin-top: .4rem; color: var(--accent); font-style: italic; text-decoration: none; }
+.pop a:hover, .pop a:focus-visible { text-decoration: underline; }
+.pop-x { position: absolute; top: .3rem; right: .4rem; width: 1.8rem; height: 1.8rem; border: 0; border-radius: 50%; background: transparent; color: var(--ink); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.pop-x:hover, .pop-x:focus-visible { background: rgba(138,106,79,.18); outline: none; }
+.maptext { text-align: center; margin: .5rem 0 0; }
+.cta { font-size: .85rem; font-style: italic; letter-spacing: .08em; color: var(--soft); text-decoration: none; }
+.cta:hover, .cta:focus-visible { color: var(--accent); }
+.note { text-align: center; color: var(--soft); font-style: italic; margin: .4rem 0 0; }
+.couple { margin: 0 auto; padding: 1.6rem 1.5rem 4.5rem; max-width: 24rem; }
+.oval { position: relative; width: min(100%, 12.5rem); margin: 0 auto; }
+.oval .photo { display: block; width: 100%; height: auto; }
+.oval .frame { position: absolute; left: -12%; top: -10.17%; width: 124%; height: 120.3%; pointer-events: none; }
+.closing { text-align: center; padding-block: 3.5rem .5rem; color: var(--accent); font-size: 1.5rem; font-style: italic; letter-spacing: .06em; }
 
-.date {
-  font-size: clamp(1.1rem, 3.5vw, 1.4rem);
-}
-
-.venue a {
-  color: inherit;
-  text-decoration: none;
-  padding-bottom: 0.3em;
-  background-repeat: repeat-x;
-  background-position: left bottom;
-  background-size: 10px 5px;
-  background-image: none;
-}
-
-/* Thin scalloped underline, shown only on hover, keyboard focus and click */
-.venue a:hover,
-.venue a:focus-visible,
-.venue a:active {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='5' viewBox='0 0 10 5'%3E%3Cpath d='M0 .6 Q5 6 10 .6' fill='none' stroke='%238a6a4f' stroke-width='0.8'/%3E%3C/svg%3E");
-}
-
-.venue a:focus-visible {
-  outline: none;
+@media (max-width: 560px) {
+  .what { font-size: 1.1rem; }
+  .where { font-size: .95rem; }
+  .pic svg { width: 52px; height: 52px; }
 }
