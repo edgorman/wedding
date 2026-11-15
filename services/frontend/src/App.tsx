@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import church from './assets/church.webp'
-import couple from './assets/couple.webp'
-import frame from './assets/frame.svg'
-import map from './assets/map.svg'
+import { art } from './artwork'
 import { calendarUrl, directionsUrl, spots } from './mapInfo'
+import { houses, landmarks, MAP_H, MAP_W, route, trees, type Box } from './mapLayout'
 import { events } from './timeline'
 import '@fontsource/cormorant-garamond/400.css'
 import '@fontsource/cormorant-garamond/500.css'
@@ -12,6 +10,14 @@ import '@fontsource/caveat/500.css'
 import './App.css'
 
 type SpotKey = keyof typeof spots
+
+// Position an icon on the map canvas, as percentages of the map's width and height.
+const place = ([l, t, w, h]: Box): CSSProperties => ({
+  left: `${(l / MAP_W) * 100}%`,
+  top: `${(t / MAP_H) * 100}%`,
+  width: `${(w / MAP_W) * 100}%`,
+  height: `${(h / MAP_H) * 100}%`,
+})
 
 const wavePath =
   'M500 0 C500 42.5 550 42.5 550 85 C550 170 450 170 450 255 C450 340 550 340 550 425 C550 510 450 510 450 595 C450 680 550 680 550 765 C550 850 450 850 450 935 C450 977.5 500 977.5 500 1020'
@@ -56,13 +62,6 @@ function App() {
 
   return (
     <main className="page">
-      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
-        <filter id="wobble">
-          <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="4" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="3.5" />
-        </filter>
-      </svg>
-
       {bannerOpen && (
         <div className="wip" role="status">
           <span>
@@ -77,7 +76,7 @@ function App() {
       )}
 
       <header className="hero">
-        <img className="church" src={church} alt="Watercolour drawing of St James' Church, Shere" />
+        <img className="church" src={art('hero/church')} alt="Watercolour drawing of St James' Church, Shere" />
         <h1 className="names">Katie &amp; Ed&apos;s Wedding</h1>
         <p>
           <a className="datelink" href={calendarUrl} target="_blank" rel="noopener noreferrer">
@@ -105,15 +104,7 @@ function App() {
                 <p className="where">{e.where}</p>
               </div>
               <div className="pic">
-                <svg viewBox="0 0 80 80" filter="url(#wobble)" aria-hidden="true">
-                  {e.shapes.map((s, i) =>
-                    'd' in s ? (
-                      <path key={i} d={s.d} className={s.tint ? 'tint' : undefined} />
-                    ) : (
-                      <circle key={i} cx={s.cx} cy={s.cy} r={s.r} className={s.tint ? 'tint' : undefined} />
-                    ),
-                  )}
-                </svg>
+                <img src={art(`timeline/${e.icon}`)} alt="" />
               </div>
             </li>
           ))}
@@ -130,7 +121,23 @@ function App() {
             rel="noopener noreferrer"
             aria-label="Open directions from St James' Church to Burrows Lea Country House in Google Maps"
           >
-            <img src={map} alt="Hand-drawn map of the bus route from St James' Church in Shere to Burrows Lea Country House" />
+            <img
+              className="base"
+              src={art('map/map')}
+              alt="Hand-drawn map of the bus route from St James' Church in Shere to Burrows Lea Country House"
+            />
+            <span className="icons" aria-hidden="true">
+              {houses.map((b, i) => (
+                <img key={`h${i}`} src={art('map/house')} alt="" style={place(b)} />
+              ))}
+              {trees.map((b, i) => (
+                <img key={`t${i}`} src={art('map/tree')} alt="" style={place(b)} />
+              ))}
+              <img src={art('map/route')} alt="" style={place(route)} />
+              {(['church', 'venue', 'bus'] as const).map((k) => (
+                <img key={k} src={art(`map/${k}`)} alt="" style={place(landmarks[k])} />
+              ))}
+            </span>
           </a>
           {(Object.keys(spots) as SpotKey[]).map((k) => (
             <button
@@ -176,8 +183,8 @@ function App() {
       <p className="closing">We can&apos;t wait to see you all!</p>
       <figure className="couple">
         <div className="oval">
-          <img className="photo" src={couple} alt="Katie and Ed laughing together" />
-          <img className="frame" src={frame} alt="" />
+          <img className="photo" src={art('couple/photo')} alt="Katie and Ed laughing together" />
+          <img className="frame" src={art('couple/frame')} alt="" />
         </div>
       </figure>
     </main>

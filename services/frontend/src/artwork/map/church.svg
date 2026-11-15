@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="177.3 125.2 94.4 105.8" fill="none" stroke="#3b3a36" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+<defs><filter id="wob2" filterUnits="userSpaceOnUse" x="177.3" y="125.2" width="94.4" height="105.8"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/></filter></defs>
+<g filter="url(#wob2)">
+<g transform="translate(222 224) scale(.82)" stroke-width="2.1">
+<g fill="#6f8f5a" stroke="#4d6a42" stroke-width="1.6"><path d="M-46 0L-40 -13L-43 -13L-37 -27L-40 -27L-33 -44L-26 -27L-29 -27L-24 -13L-27 -13L-22 0Z"/></g>
+<path d="M-14 -22V-62H14V-22Z" fill="#dcc596"/>
+<path d="M-18 -62L0 -100L18 -62Z" fill="#a9a8b4"/><path d="M0 -100V-62" stroke-width="1.5"/><path d="M0 -100V-112M-4 -107H4" stroke-width="1.6"/>
+<circle cx="0" cy="-46" r="5.5" fill="#f3efe4" stroke-width="1.4"/><path d="M0 -46V-49M0 -46L2.5 -45" stroke-width="1.1"/>
+<path d="M-11 -34V-48Q-9 -53 -7 -48V-34ZM7 -34V-48Q9 -53 11 -48V-34Z" fill="#8f90a6" stroke-width="1.3"/>
+<path d="M-34 0V-22L-12 -38L12 -22V0Z" fill="#dcc596"/>
+<path d="M-12 -38L0 -30L12 -22" stroke-width="1.4"/>
+<path d="M-26 -9V-17Q-24 -21 -22 -17V-9ZM-18 -9V-17Q-16 -21 -14 -17V-9Z" fill="#8f90a6" stroke-width="1.3"/>
+<path d="M-8 0V-9Q-3 -14 2 -9V0Z" fill="#8a6446" stroke-width="1.5"/>
+<path d="M10 0V-18M44 0V-18" stroke="#8a6446" stroke-width="3"/>
+<path d="M12 0V-12Q12 -20 27 -20Q42 -20 42 -12V0" stroke="#8a6446" stroke-width="2.2"/>
+<path d="M18 0Q18 -8 22 -8Q26 -8 26 0M30 0Q30 -7 34 -7Q38 -7 38 0" fill="#d9c07f" stroke-width="1.3"/>
+<path d="M2 -20L27 -44L52 -20Z" fill="#a8785a"/><path d="M12 -26Q27 -22 42 -26M8 -22H46" stroke-width="1" opacity=".7"/>
+<path d="M0 0H52" stroke-width="1.6"/></g>
+</g>
+</svg>
