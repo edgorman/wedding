@@ -32,7 +32,7 @@ The map is a stack of transparent layers that all line up on a 600 x 900 canvas,
 | `map/bus.svg` | The guest bus (tap for info). | 95 x 77 |
 | `map/venue.svg` | Burrows Lea Country House (tap for info). | 134 x 80 |
 | `map/house.svg` | One small house, repeated about 190 times at different sizes. | 18 x 20 |
-| `map/tree.svg` | One tree, repeated about 250 times at different sizes. | 20 x 23 |
+| `map/tree.svg` | One tree, repeated about 250 times at different sizes. | 800 x 888 |
 
 Where each icon sits is listed in [`../mapLayout.ts`](../mapLayout.ts). Move or resize one there if a new drawing needs a different frame. The tap targets for the church, bus and venue are in [`../mapInfo.ts`](../mapInfo.ts).
 
@@ -42,5 +42,4 @@ Where each icon sits is listed in [`../mapLayout.ts`](../mapLayout.ts). Move or 
 | --- | --- | --- |
 | `hero/church.webp` | The watercolour church at the top of the page. | 706 x 798 px now (shown up to 22rem wide) |
 | `background/paper.jpg` | The paper texture behind the page. It tiles, so it should join up at its edges. | any size |
-| `couple/photo.webp` | The photo of Katie and Ed in the oval. | 17 x 20 (760 x 896 px now) |
-| `couple/frame.svg` | The picture frame around that photo. | 124 x 142 |
+| `couple/dancing.svg` | The small watercolour drawing of the groom and bride dancing at the bottom of the page. | 800 x 888 |

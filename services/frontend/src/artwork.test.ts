@@ -5,8 +5,7 @@ test('every drawn asset the page uses has an artwork file', () => {
   const names = [
     'hero/church',
     'background/paper',
-    'couple/photo',
-    'couple/frame',
+    'couple/dancing',
     ...events.map((e) => `timeline/${e.icon}`),
     ...['map', 'route', 'church', 'venue', 'bus', 'house', 'tree'].map((n) => `map/${n}`),
   ]
