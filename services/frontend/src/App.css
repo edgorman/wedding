@@ -31,6 +31,8 @@ body {
 .hero p { margin: .25rem 0; letter-spacing: .12em; font-size: clamp(1.1rem, 3.5vw, 1.5rem); }
 .datelink, .churchlink { color: inherit; text-decoration: underline wavy rgba(138, 106, 79, .5); text-decoration-thickness: 1px; text-underline-offset: 5px; }
 .datelink:active, .churchlink:active { text-decoration-color: var(--accent); }
+/* Sized so the date is never wider than the church line above it. */
+.datelink { font-size: clamp(.82rem, 2.46vw, .984rem); letter-spacing: .08em; }
 .datelink:hover, .datelink:focus-visible, .churchlink:hover, .churchlink:focus-visible { color: var(--accent); }
 .hero .sub { margin: 0 0 .5rem; color: var(--soft); font-size: clamp(1rem, 3vw, 1.2rem); letter-spacing: .08em; }
 
