@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { flushSync } from 'react-dom'
 import { art } from './artwork'
 import { calendarUrl, directionsUrl, spots } from './mapInfo'
 import { houses, landmarks, MAP_H, MAP_W, route, trees, type Box } from './mapLayout'
@@ -29,6 +30,7 @@ function App() {
   const [open, setOpen] = useState<SpotKey | null>(null)
   const [popPos, setPopPos] = useState({ left: 8, top: 8 })
   const [bottom, setBottom] = useState(false)
+  const heroRef = useRef<HTMLElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
   const btnRefs = useRef<Partial<Record<SpotKey, HTMLButtonElement | null>>>({})
@@ -44,6 +46,21 @@ function App() {
       window.removeEventListener('resize', update)
     }
   }, [])
+
+  // Close the work-in-progress banner for good once the hero has scrolled out of view.
+  useEffect(() => {
+    if (!bannerOpen) return
+    const onScroll = () => {
+      const hero = heroRef.current
+      if (!hero || hero.getBoundingClientRect().bottom > 0) return
+      const before = hero.getBoundingClientRect().top
+      flushSync(() => setBannerOpen(false))
+      // Removing the banner shifts the page up; scroll by the same amount so nothing jumps.
+      window.scrollBy(0, hero.getBoundingClientRect().top - before)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [bannerOpen])
 
   // Scroll down one viewport height, or to the next section if that comes first.
   const scrollDown = () => {
@@ -101,7 +118,7 @@ function App() {
         </div>
       )}
 
-      <header className="hero" data-section>
+      <header className="hero" data-section ref={heroRef}>
         <img className="church" src={art('hero/church')} alt="Watercolour drawing of St James' Church, Shere" />
         <h1 className="names">Katie &amp; Ed&apos;s Wedding</h1>
         <p className="sub">
@@ -213,12 +230,7 @@ function App() {
 
       <footer className="end" data-section>
         <p className="closing">We can&apos;t wait to see you all!</p>
-        <figure className="couple">
-          <div className="oval">
-            <img className="photo" src={art('couple/photo')} alt="Katie and Ed laughing together" />
-            <img className="frame" src={art('couple/frame')} alt="" />
-          </div>
-        </figure>
+        <img className="dance" src={art('couple/dancing')} alt="Drawing of a groom and bride dancing" />
       </footer>
 
       {!bottom && (

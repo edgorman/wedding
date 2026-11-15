@@ -42,5 +42,4 @@ Where each icon sits is listed in [`../mapLayout.ts`](../mapLayout.ts). Move or 
 | --- | --- | --- |
 | `hero/church.webp` | The watercolour church at the top of the page. | 706 x 798 px now (shown up to 22rem wide) |
 | `background/paper.jpg` | The paper texture behind the page. It tiles, so it should join up at its edges. | any size |
-| `couple/photo.webp` | The photo of Katie and Ed in the oval. | 17 x 20 (760 x 896 px now) |
-| `couple/frame.svg` | The picture frame around that photo. | 124 x 142 |
+| `couple/dancing.svg` | The small drawing of the groom and bride dancing at the bottom of the page. | 20 x 23 |

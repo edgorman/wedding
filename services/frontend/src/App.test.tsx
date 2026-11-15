@@ -36,6 +36,19 @@ test('the work-in-progress banner can be closed', () => {
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
+test('the work-in-progress banner closes once the hero has scrolled away', () => {
+  render(<App />)
+  const hero = document.querySelector('.hero') as HTMLElement
+  const rect = vi.spyOn(hero, 'getBoundingClientRect')
+  rect.mockReturnValue({ top: 0, bottom: 500 } as DOMRect)
+  fireEvent.scroll(window)
+  expect(screen.getByRole('status')).toBeInTheDocument()
+  rect.mockReturnValue({ top: -600, bottom: -100 } as DOMRect)
+  window.scrollBy = vi.fn()
+  fireEvent.scroll(window)
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+})
+
 test('the scroll chevron scrolls down and hides at the bottom of the page', () => {
   const height = vi.spyOn(document.documentElement, 'scrollHeight', 'get').mockReturnValue(5000)
   window.scrollTo = vi.fn()
