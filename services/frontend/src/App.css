@@ -81,7 +81,7 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .cta { font-size: .85rem; font-style: italic; letter-spacing: .08em; color: var(--soft); text-decoration: none; }
 .cta:hover, .cta:focus-visible { color: var(--accent); }
 .note { text-align: center; color: var(--soft); font-style: italic; margin: .4rem 0 0; }
-.dance { display: block; width: 9rem; max-width: 60%; height: auto; margin: 1.5rem auto 4.5rem; }
+.dance { display: block; width: 11rem; max-width: 60%; height: auto; margin: 1.5rem auto 4.5rem; }
 .closing { text-align: center; margin: 0; padding-block: 3.5rem .5rem; color: var(--accent); font-size: 1.5rem; font-style: italic; letter-spacing: .06em; }
 
 /* Fixed chevron, bottom right: scrolls down a screen or to the next section. */
