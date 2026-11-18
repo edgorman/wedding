@@ -1,9 +1,25 @@
 name: 'Promote Release'
 
-# Fires when a pre-release is promoted to a Release, or an older one is re-promoted to roll back.
+# Deploys a release to production from the commit-SHA bundle already in prod's own bucket:
+# push-release.yaml calls it when release-please cuts a release, and it is run by hand to roll back
+# (or finish a failed promotion) with an earlier release tag. Nothing is rebuilt (decisions 9, 11).
 on:
-  release:
-    types: [released]
+  workflow_call:
+    inputs:
+      tag:
+        description: 'The release tag being deployed, e.g. v1.2.3'
+        type: string
+        required: true
+      sha:
+        description: 'The commit the tag points at'
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to deploy, e.g. v1.2.3 - the latest to promote, an earlier one to roll back'
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -13,12 +29,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Step 1: infra applies before the site is touched, from the plan saved when this pre-release
-  # was cut (the one in its notes). If prod changed since, as on any rollback, it plans again here.
-  infrastructure-prod:
-    # Every later job needs this one, so skipping it here skips the whole promotion on a repository
-    # whose infrastructure/root hasn't been bootstrapped yet.
+  # Resolves what is being deployed; a manual run names only the tag.
+  target:
+    # Every later job needs this one, so skipping it skips the promotion before root's bootstrap.
     if: vars.WORKLOAD_IDENTITY_PROVIDER != ''
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.target.outputs.tag }}
+      sha: ${{ steps.target.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - id: target
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+          SHA: ${{ inputs.sha }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::'$TAG' is not a release tag (vMAJOR.MINOR.PATCH)."; exit 1; }
+          sha="${SHA:-$(git rev-list -n 1 "refs/tags/$TAG")}"
+          test -n "$sha" || { echo "::error::No commit for tag $TAG."; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+  # Step 1: infra applies before the site is touched, re-planned in the job (decision 14).
+  infrastructure-prod:
+    needs: target
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -26,26 +63,23 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.target.outputs.sha }}
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
+          service_account: ${{ vars.PROMOTE_SERVICE_ACCOUNT }}
       - uses: ./.github/actions/terraform-push-commit
         with:
           terraform_directory: 'infrastructure/env'
           config_directory: 'infrastructure/config/prod'
-          plan_dir: gs://${{ vars.GCP_PROJECT_PREFIX }}-prod-terraform-state/plans/prod
-          secrets: |
-            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
+        env:
+          TF_VAR_ci_service_account: ${{ vars.PROMOTE_SERVICE_ACCOUNT }}
 
-  # Step 2: fetch the commit-SHA folder already published to prod's own bucket when this commit was built
-  # and validated on staging (a rollback fetches an earlier release's, already sitting there too),
-  # then deploy those static files to prod's Cloudflare Pages project. No cross-project read and no
-  # copy - the bucket promotion reads from is prod's own.
-  services-frontend:
-    needs: infrastructure-prod
+  # Step 2: fetch the commit-SHA folder from prod's own bucket and deploy it. It reads nothing from
+  # staging.
+  frontend:
+    needs: [target, infrastructure-prod]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -53,23 +87,27 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.sha }}
-      - id: secrets
-        uses: ./.github/actions/gcp-secret-manager
+          ref: ${{ needs.target.outputs.sha }}
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
-          project_id: ${{ vars.GCP_ROOT_PROJECT }}
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
-          secrets_list: |
-            CLOUDFLARE_API_TOKEN=cloudflare_api_token
-            CLOUDFLARE_ACCOUNT_ID=cloudflare_account_id
+          service_account: ${{ vars.PROMOTE_SERVICE_ACCOUNT }}
+      - id: secrets
+        uses: google-github-actions/get-secretmanager-secrets@bc9c54b29fdffb8a47776820a7d26e77b379d262 # v3.0.0
+        with:
+          secrets: |-
+            cloudflare_api_token: projects/${{ vars.GCP_ROOT_PROJECT }}/secrets/cloudflare_api_token/versions/latest
       - uses: ./.github/actions/frontend-fetch
         with:
           gcp_project_id: '${{ vars.GCP_PROJECT_PREFIX }}-prod'
-          sha: ${{ github.sha }}
-          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
+          sha: ${{ needs.target.outputs.sha }}
       - uses: ./.github/actions/frontend-deploy
         with:
-          secrets: ${{ steps.secrets.outputs.secrets }}
+          cloudflare_api_token: ${{ steps.secrets.outputs.cloudflare_api_token }}
           cloudflare_project_name: '${{ vars.GCP_PROJECT_PREFIX }}-prod'
+          cloudflare_account_id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          version: ${{ needs.target.outputs.tag }}
+          environment: 'production'
+          site_url: ${{ vars.PRODUCTION_URL }}
+          site_name: ${{ vars.SITE_NAME }}

@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# Installs the exact toolchain versions this repo's CI pins - terraform and the moon/proto
-# binaries themselves - so a cloud session can run moon tasks and `terraform plan` against the
+# Installs the exact toolchain versions this repo's CI pins - terraform, and the moon/proto
+# binaries themselves - so a cloud session can run `terraform plan` and `moon ci` against the
 # same binaries CI uses, instead of whatever (if anything) happens to be preinstalled.
 # See "Building with moon" in .github/AGENTS.md for where each version comes from.
 #
@@ -20,23 +20,26 @@ mkdir -p "$BIN_DIR"
 echo "export PATH=\"$BIN_DIR:\$PATH\"" >>"$CLAUDE_ENV_FILE"
 export PATH="$BIN_DIR:$PATH"
 
-# --- terraform 1.15.8 -------------------------------------------------------------------------
-# Matches infrastructure/root/providers.tf's
-# `required_version`, and .prototools' own terraform pin. Needed for `terraform plan`/`apply`.
-if ! "$BIN_DIR/terraform" version 2>/dev/null | head -1 | grep -qx 'Terraform v1.15.8'; then
+# --- terraform ---------------------------------------------------------------------------------
+# The version .prototools pins, which setup-terraform in CI reads too and every providers.tf's
+# `required_version` matches. Needed for `terraform plan`/`validate`. Checked against the release's
+# own SHA256SUMS file, so there is no checksum here to go stale when the pin moves.
+tf_version="$(sed -n 's/^terraform = "\([^"]*\)".*/\1/p' .prototools | head -1)"
+if ! "$BIN_DIR/terraform" version 2>/dev/null | head -1 | grep -qx "Terraform v$tf_version"; then
   tf_tmp="$(mktemp -d)"
   trap 'rm -rf "$tf_tmp"' RETURN
-  curl -fsSL -o "$tf_tmp/terraform.zip" \
-    "https://releases.hashicorp.com/terraform/1.15.8/terraform_1.15.8_linux_amd64.zip"
-  echo "d25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d  $tf_tmp/terraform.zip" | sha256sum -c -
-  unzip -q "$tf_tmp/terraform.zip" -d "$tf_tmp"
+  tf_zip="terraform_${tf_version}_linux_amd64.zip"
+  curl -fsSL -o "$tf_tmp/$tf_zip" "https://releases.hashicorp.com/terraform/$tf_version/$tf_zip"
+  curl -fsSL -o "$tf_tmp/SHA256SUMS" "https://releases.hashicorp.com/terraform/$tf_version/terraform_${tf_version}_SHA256SUMS"
+  (cd "$tf_tmp" && grep " $tf_zip\$" SHA256SUMS | sha256sum -c -)
+  unzip -q "$tf_tmp/$tf_zip" -d "$tf_tmp"
   mv "$tf_tmp/terraform" "$BIN_DIR/terraform"
   rm -rf "$tf_tmp"
   trap - RETURN
 fi
 
-# --- proto 0.62.3 + moon 2.5.5 -----------------------------------------------------------------
-# Pinned GitHub release binaries with verified checksums, the same pattern as terraform above
+# --- proto + moon -----------------------------------------------------------------
+# Pinned GitHub release binaries with verified checksums, the same pattern terraform above
 # use - not `curl https://moonrepo.dev/install/moon.sh | bash`, since that installer isn't
 # reachable through the session proxy (403), and moonrepo.dev isn't in the default allowlist.
 #
@@ -49,18 +52,21 @@ fi
 # - MOON_PLUGINS_USE_URL_DIST loads each plugin from its github.com/moonrepo/plugins release asset
 #   (and sets PROTO_PLUGINS_USE_URL_DIST for proto's own plugins) rather than from ghcr.io.
 # - MOON_TOOLCHAIN_FORCE_GLOBALS runs tasks with the node/npm already on PATH plus
-#   Terraform from above, rather than having proto download them - dl.google.com, where proto
-#   fetches Go from, is blocked too. The versions still match .prototools: the base image's Node 22/npm match.
-# With both set, `moon run`/`moon ci` work here. See AGENTS.md's Commands section for the two
+#   Terraform from above, rather than having proto download them. The versions still match
+#   .prototools: the base image's Node 22/npm match.
+# With both set, `moon run`/`moon ci` work here. See AGENTS.md's Commands section for the
 # task that still can't (Terraform `validate`).
-if ! "$BIN_DIR/proto" --version 2>/dev/null | grep -qx '0.62.3'; then
+# renovate: datasource=github-releases depName=moonrepo/proto extractVersion=^v(?<version>.+)$
+proto_version='0.62.3'
+moon_version="$(sed -n 's/^moon = "\([^"]*\)".*/\1/p' .prototools | head -1)"
+if ! "$BIN_DIR/proto" --version 2>/dev/null | grep -qx "$proto_version"; then
   proto_tmp="$(mktemp -d)"
   trap 'rm -rf "$proto_tmp"' RETURN
   proto_asset='proto_cli-x86_64-unknown-linux-gnu.tar.xz'
   curl -fsSL -o "$proto_tmp/$proto_asset" \
-    "https://github.com/moonrepo/proto/releases/download/v0.62.3/$proto_asset"
+    "https://github.com/moonrepo/proto/releases/download/v$proto_version/$proto_asset"
   curl -fsSL -o "$proto_tmp/$proto_asset.sha256" \
-    "https://github.com/moonrepo/proto/releases/download/v0.62.3/$proto_asset.sha256"
+    "https://github.com/moonrepo/proto/releases/download/v$proto_version/$proto_asset.sha256"
   (cd "$proto_tmp" && sha256sum -c "$proto_asset.sha256")
   tar -xJf "$proto_tmp/$proto_asset" -C "$proto_tmp"
   mv "$proto_tmp/proto_cli-x86_64-unknown-linux-gnu/proto" "$BIN_DIR/proto"
@@ -69,14 +75,14 @@ if ! "$BIN_DIR/proto" --version 2>/dev/null | grep -qx '0.62.3'; then
   trap - RETURN
 fi
 
-if ! "$BIN_DIR/moon" --version 2>/dev/null | grep -qx '2.5.5'; then
+if ! "$BIN_DIR/moon" --version 2>/dev/null | grep -qx "$moon_version"; then
   moon_tmp="$(mktemp -d)"
   trap 'rm -rf "$moon_tmp"' RETURN
   moon_asset='moon_cli-x86_64-unknown-linux-gnu.tar.xz'
   curl -fsSL -o "$moon_tmp/$moon_asset" \
-    "https://github.com/moonrepo/moon/releases/download/v2.5.5/$moon_asset"
+    "https://github.com/moonrepo/moon/releases/download/v$moon_version/$moon_asset"
   curl -fsSL -o "$moon_tmp/$moon_asset.sha256" \
-    "https://github.com/moonrepo/moon/releases/download/v2.5.5/$moon_asset.sha256"
+    "https://github.com/moonrepo/moon/releases/download/v$moon_version/$moon_asset.sha256"
   (cd "$moon_tmp" && sha256sum -c "$moon_asset.sha256")
   tar -xJf "$moon_tmp/$moon_asset" -C "$moon_tmp"
   mv "$moon_tmp/moon_cli-x86_64-unknown-linux-gnu/moon" "$BIN_DIR/moon"

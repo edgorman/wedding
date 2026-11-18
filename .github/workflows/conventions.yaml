@@ -7,21 +7,18 @@ on:
     branches:
       - main
     types: [opened, edited, synchronize, reopened]
-  merge_group:
 
 permissions:
   contents: read
 
 concurrency:
-  group: conventions-${{ github.event.pull_request.number || github.ref }}
+  group: conventions-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   # The squash commit subject is the PR title, and versioning parses it (root AGENTS.md, Commit
-  # Message Convention). In a merge queue the title was already checked on the PR, so this
-  # reports skipped, which counts as passing.
+  # Message Convention).
   pr-title:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Check Conventional Commit title

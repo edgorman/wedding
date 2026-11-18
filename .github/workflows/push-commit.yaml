@@ -1,9 +1,15 @@
 name: 'Push Commit'
 
+# Every push to main except a release-please release commit, which push-release.yaml handles. A
+# release commit changes only the files release-please owns, and a push that changes only those is
+# the one `paths-ignore` skips; a push that also changes anything else runs both files.
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - '.github/.release-please-manifest.json'
 
 permissions:
   contents: read
@@ -13,134 +19,63 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Computed once, early - a read-only calculation, unlike actually cutting the tag/release, which
-  # still waits on services-frontend below (see pre-release's own comment) so a tag is never cut
-  # for a commit that failed to build.
-  version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0
-      # Reads Conventional Commit subjects (see AGENTS.md) from the squash-merge history on `main`
-      # to pick the bump: a bare `feat:` is minor, `!` or a `BREAKING CHANGE:` footer is major,
-      # anything else (`fix:`, `chore:`, ...) is patch - same fallback as the old always-patch logic.
-      - id: version
-        name: Calculate Next Version
-        uses: Fresa/trunk-based-release-versioning@8b8150e3258028d42d7a8d30aec43491f5794d9e # v0.2.0
-
-  # moon decides which Terraform deployment(s) an apply reaches, the same way pull-request.yaml's
-  # `changed` job decides which to plan. The publish marker decides whether the frontend is
-  # rebuilt; otherwise base_sha's artifact is reused (decision 26).
+  # moon decides which Terraform deployments an apply reaches, as pull-request.yaml's `changed` job
+  # decides which to plan. The frontend's publish marker decides whether it is rebuilt; otherwise
+  # base_sha's bundle is reused (decision 10).
   changed:
-    # Skipped until infrastructure/root's bootstrap writes the repository variables (see
-    # infrastructure/AGENTS.md), so an un-bootstrapped repository runs only the PR checks.
-    # Everything that deploys waits on this job, so skipping it skips them all.
+    # Skipped until root's bootstrap writes the repository variables (infrastructure/AGENTS.md); everything
+    # that deploys waits on this job.
     if: vars.WORKLOAD_IDENTITY_PROVIDER != ''
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     outputs:
-      infrastructure-root: ${{ steps.moon.outputs.root }}
-      infrastructure-staging: ${{ steps.moon.outputs.staging }}
-      frontend: ${{ steps.moon.outputs.frontend }}
-      base_sha: ${{ steps.moon.outputs.base_sha }}
+      # With no base to diff against, everything is affected.
+      infrastructure-root: ${{ steps.base.outputs.base == '' || fromJSON(steps.affected.outputs.affected || '{}').root }}
+      infrastructure-staging: ${{ steps.base.outputs.base == '' || fromJSON(steps.affected.outputs.affected || '{}').staging }}
+      frontend: ${{ steps.base.outputs.base == '' || fromJSON(steps.affected.outputs.affected || '{}').frontend }}
+      deployable: ${{ steps.base.outputs.base == '' || fromJSON(steps.affected.outputs.affected || '{}').deployable }}
+      base_sha: ${{ steps.base.outputs.base_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           filter: 'blob:none'
-      - uses: moonrepo/setup-toolchain@261c62cb5b0f580c7be7c8cd0f023a2e96756095 # v0.6.4
-        with:
-          auto-install: true
-          # See pull-request.yaml's identical `changed` step: every observed
-          # `proto-shim: ... Permission denied (os error 13)` failure in early CI
-          # runs happened right after a toolchain cache hit, on a different task each time - the
-          # cache restore is the common thread, not the task. Disabled until that's fixed upstream.
-          cache: false
-      - id: moon
-        name: Compute moon-affected deployments
+      - id: base
+        name: Choose the diff base
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Diffed against the last commit this workflow fully processed - the newest release tag
-          # before this commit (pre-release only tags a commit once every publish job succeeded) -
-          # rather than `github.event.before`. The concurrency group keeps at most one
-          # pending run and cancels the rest, so `before` can name a merge whose run never happened,
-          # and that merge's infrastructure changes would never be applied. HEAD~1, not HEAD, so a
-          # re-run of an already-tagged commit still sees its own changes. moon reads MOON_BASE the
-          # same way `moon ci` does (`moon query affected` has no --base flag). No tag at all fails
-          # open: every deployment marked affected rather than guessed at.
-          if base=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD~1 2>/dev/null); then
-            echo "Diffing against $base"
-            export MOON_BASE="$base"
-            echo "base_sha=$(git rev-list -n 1 "$base")" >> "$GITHUB_OUTPUT"
+          # Diffed against the last commit this workflow fully processed (decision 6): the
+          # previous commit when its own run succeeded, else the newest release tag before this
+          # commit. So a merge builds and applies only what it changes, not everything since the last
+          # release. A cancelled or failed run is never the base, so its work is redone. HEAD~1 is
+          # the diff end, so a re-run of a tagged commit sees its own changes. With no base, every
+          # deployment is marked affected.
+          base=
+          prev=$(git rev-parse HEAD~1)
+          if [ "$(gh run list --workflow push-commit.yaml --branch main --commit "$prev" --status success --json databaseId --jq length)" -gt 0 ]; then
+            base=$prev
           else
-            printf '%s=true\n' root staging frontend >> "$GITHUB_OUTPUT"
-            exit 0
+            base=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD~1 2>/dev/null || true)
           fi
-          moon query affected > affected.json
-          for pair in root=deploy-root:plan staging=deploy-staging:plan \
-            frontend=services/frontend:publish; do
-            # .tasks is omitted entirely when nothing is affected (moon's Affected struct skips
-            # empty maps on serialize), so `(.tasks // {})` guards against `has` erroring on null.
-            val=$(jq -r --arg t "${pair#*=}" '(.tasks // {}) | has($t)' affected.json)
-            echo "${pair%%=*}=$val" >> "$GITHUB_OUTPUT"
-          done
-
-  # Runs on every merge so every commit on `main`, and therefore every release tag, has a folder in
-  # both buckets. It only builds when the frontend is affected; otherwise it publishes base_sha's
-  # folder again under this commit (or builds, if that folder has aged out). Either way it deploys,
-  # so staging always shows this commit's version. One folder feeds both buckets and Cloudflare
-  # Pages, so the live staging site is never different from what's stored.
-  services-frontend:
-    # infrastructure-root is checked on its own because infrastructure-staging skips (rather than
-    # fails) after it when staging isn't affected. Staging must have applied first: it owns the
-    # bucket this publishes into.
-    needs: [changed, infrastructure-root, infrastructure-staging, version]
-    if: |
-      always() &&
-      needs.changed.result == 'success' &&
-      (needs.infrastructure-root.result == 'success' || needs.infrastructure-root.result == 'skipped') &&
-      (needs.infrastructure-staging.result == 'success' || needs.infrastructure-staging.result == 'skipped') &&
-      needs.version.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - id: secrets
-        uses: ./.github/actions/gcp-secret-manager
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          if [ -n "$base" ]; then
+            echo "Diffing against $base"
+            echo "base_sha=$(git rev-list -n 1 "$base")" >> "$GITHUB_OUTPUT"
+          fi
+      - id: affected
+        if: steps.base.outputs.base != ''
+        uses: ./.github/actions/moon-affected
         with:
-          project_id: ${{ vars.GCP_ROOT_PROJECT }}
-          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
-          secrets_list: |
-            CLOUDFLARE_API_TOKEN=cloudflare_api_token
-            CLOUDFLARE_ACCOUNT_ID=cloudflare_account_id
-      - id: reuse
-        name: Reuse the unchanged frontend
-        if: needs.changed.outputs.frontend != 'true'
-        continue-on-error: true
-        uses: ./.github/actions/frontend-fetch
-        with:
-          gcp_project_id: '${{ vars.GCP_PROJECT_PREFIX }}-stag'
-          sha: ${{ needs.changed.outputs.base_sha }}
-          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
-      - if: steps.reuse.outcome != 'success'
-        uses: ./.github/actions/frontend-build
-      - uses: ./.github/actions/frontend-publish
-        with:
-          gcp_project_id: '${{ vars.GCP_PROJECT_PREFIX }}-stag'
-          prod_project_id: '${{ vars.GCP_PROJECT_PREFIX }}-prod'
-          sha: ${{ github.sha }}
-          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
-      - uses: ./.github/actions/frontend-deploy
-        with:
-          secrets: ${{ steps.secrets.outputs.secrets }}
-          cloudflare_project_name: '${{ vars.GCP_PROJECT_PREFIX }}-stag'
+          base: ${{ steps.base.outputs.base }}
+          tasks: |
+            root=deploy-root:apply
+            staging=deploy-staging:apply
+            frontend=services/frontend:publish
+            deployable=deploy-root:apply deploy-staging:apply services/frontend:publish
 
   infrastructure-root:
     needs: changed
@@ -151,31 +86,30 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - id: secrets
-        uses: ./.github/actions/gcp-secret-manager
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
-          project_id: ${{ vars.GCP_ROOT_PROJECT }}
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
-          secrets_list: |
-            TF_VAR_github_provider_token=github_provider_token
-            TF_VAR_cloudflare_account_id=cloudflare_account_id
-            TF_VAR_cloudflare_api_token=cloudflare_api_token
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+      - id: secrets
+        uses: google-github-actions/get-secretmanager-secrets@bc9c54b29fdffb8a47776820a7d26e77b379d262 # v3.0.0
+        with:
+          secrets: |-
+            github_provider_token: projects/${{ vars.GCP_ROOT_PROJECT }}/secrets/github_provider_token/versions/latest
+            cloudflare_api_token: projects/${{ vars.GCP_ROOT_PROJECT }}/secrets/cloudflare_api_token/versions/latest
       - uses: ./.github/actions/terraform-push-commit
         with:
           terraform_directory: 'infrastructure/root'
           config_directory: 'infrastructure/config/root'
-          plan_dir: gs://${{ vars.GCP_ROOT_PROJECT }}-terraform-state/plans/root
-          secrets: ${{ steps.secrets.outputs.secrets }}
+        env:
+          TF_VAR_github_provider_token: ${{ steps.secrets.outputs.github_provider_token }}
+          TF_VAR_cloudflare_api_token: ${{ steps.secrets.outputs.cloudflare_api_token }}
 
-  # Waits on infrastructure-root so any IAM grants or API enablement it applies land first.
+  # Waits on infrastructure-root so any IAM grants or API enablement it applies land first. A status
+  # function in `if:` (`!failure()`) stops a skipped need skipping this job too; a failed one still does.
   infrastructure-staging:
     needs: [changed, infrastructure-root]
-    if: |
-      always() &&
-      needs.changed.outputs.infrastructure-staging == 'true' &&
-      needs.changed.result == 'success' &&
-      (needs.infrastructure-root.result == 'success' || needs.infrastructure-root.result == 'skipped')
+    if: ${{ !cancelled() && !failure() && needs.changed.outputs.infrastructure-staging == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -186,112 +120,121 @@ jobs:
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
       - uses: ./.github/actions/terraform-push-commit
         with:
           terraform_directory: 'infrastructure/env'
           config_directory: 'infrastructure/config/staging'
-          plan_dir: gs://${{ vars.GCP_PROJECT_PREFIX }}-stag-terraform-state/plans/staging
-          secrets: |
-            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
+        env:
+          TF_VAR_ci_service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
 
-  # The deployed staging site, checked once it is live: pre-release waits on it, so a broken
-  # deploy leaves this merge without a release candidate.
-  smoke:
-    needs: services-frontend
-    if: always() && needs.services-frontend.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Staging site serves the page
-        run: |
-          # A fresh deploy on the custom domain can answer 403 for a few minutes before the edge
-          # serves it, so poll for up to ~5 minutes rather than failing on the first window.
-          for attempt in $(seq 1 20); do
-            if curl -fsS "${{ vars.STAGING_URL }}/" | grep -qi "<title>.*wedding</title>"; then
-              exit 0
-            fi
-            sleep 15
-          done
-          echo "::error::${{ vars.STAGING_URL }} did not serve the expected page"
-          exit 1
-
-  # Runs on every merge, since the pre-release isn't gated on what changed - it waits on
-  # services-frontend having published instead, so a tag never exists without a commit-SHA frontend
-  # folder behind it in both buckets (the one failure promotion can't recover from: nothing to
-  # deploy, nothing to roll back to).
-  #
-  # `if:` explicitly checks only this job's own direct needs, and uses always(): GitHub's default
-  # success() check is defeated by a `skipped` conclusion anywhere upstream in the needs graph
-  # (infrastructure-root skips on most merges), which would silently skip this job.
-  pre-release:
-    needs: [services-frontend, smoke, version]
-    if: |
-      always() &&
-      needs.smoke.result == 'success' &&
-      needs.services-frontend.result == 'success' &&
-      needs.version.result == 'success'
+  # Runs on every merge, so every commit on `main` has a commit-SHA bundle in both environments. It
+  # builds when the frontend is affected; otherwise it publishes base_sha's folder again under this
+  # commit (or builds, if that folder has aged out). It deploys either way, so staging shows this
+  # commit. One folder feeds both buckets and the Worker; the steps are in the frontend-staging action.
+  frontend:
+    needs: [changed, infrastructure-root, infrastructure-staging]
+    if: ${{ !cancelled() && !failure() && needs.changed.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0
-
-      # Recomputed only for `last-version` and `commit-logs-path` (the release notes below), which
-      # the version job's output doesn't carry. The tag itself comes from the version job.
-      - id: version
-        name: Calculate Next Version
-        uses: Fresa/trunk-based-release-versioning@8b8150e3258028d42d7a8d30aec43491f5794d9e # v0.2.0
-
+      # Signed in once for every step below, including the composite action.
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+      - uses: ./.github/actions/frontend-staging
+        with:
+          reuse_from: ${{ needs.changed.outputs.frontend != 'true' && needs.changed.outputs.base_sha || '' }}
+          cloudflare_account_id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          root_project_id: ${{ vars.GCP_ROOT_PROJECT }}
+          gcp_project_id: ${{ vars.GCP_PROJECT_PREFIX }}-stag
+          prod_project_id: ${{ vars.GCP_PROJECT_PREFIX }}-prod
+          worker_name: ${{ vars.GCP_PROJECT_PREFIX }}-stag
+          site_url: ${{ vars.PRODUCTION_URL }}
+          site_name: ${{ vars.SITE_NAME }}
 
-      # The same read-only, -lock=false plan a PR runs against prod (it only comments on a
-      # pull_request event), leaving infrastructure/env/tfplan.txt for the notes below and saving
-      # the binary plan that promoting this pre-release applies.
+  # Skipped when this merge changes nothing deployable: the staging site is then the one the last
+  # smoke test passed. Checks the live staging site serves the page; release-please waits on it.
+  smoke:
+    needs: [changed, frontend]
+    if: ${{ !cancelled() && !failure() && needs.frontend.result == 'success' && needs.changed.outputs.deployable == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Staging site serves the page
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: |
+          # A fresh deploy or a new custom domain can answer 403 for a few minutes before the edge
+          # serves it, so poll for up to ~5 minutes rather than failing on the first window.
+          for attempt in $(seq 1 20); do
+            if curl -fsS "$STAGING_URL/" | grep -qi "<title>.*wedding</title>"; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::$STAGING_URL did not serve the expected page"
+          exit 1
+
+  # Opens or updates the release PR, so it lists this commit. Tagging the release is
+  # push-release.yaml's job, on the release PR's own merge (decision 11). It waits on this commit's
+  # deploy and smoke test: `!failure()` lets a skipped smoke (nothing deployable changed) through,
+  # and `frontend` must have run and passed, since a skipped publish job is not release-worthy.
+  release-please:
+    needs: [frontend, smoke]
+    if: ${{ !cancelled() && !failure() && needs.frontend.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      pr_number: ${{ steps.release.outputs.prs_created == 'true' && fromJSON(steps.release.outputs.pr).number || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # The PAT, so the release PR triggers the PR checks (decision 11).
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+      - id: secrets
+        uses: google-github-actions/get-secretmanager-secrets@bc9c54b29fdffb8a47776820a7d26e77b379d262 # v3.0.0
+        with:
+          secrets: |-
+            release_please_token: projects/${{ vars.GCP_ROOT_PROJECT }}/secrets/github_provider_token/versions/latest
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.secrets.outputs.release_please_token }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+
+  # The prod plan for the open release PR, so a reviewer sees what merging will apply (decision 14).
+  plan-prod:
+    needs: release-please
+    if: needs.release-please.outputs.pr_number != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.PLAN_SERVICE_ACCOUNT }}
       - uses: ./.github/actions/terraform-pull-request
         with:
           terraform_directory: 'infrastructure/env'
           config_directory: 'infrastructure/config/prod'
-          plan_dir: gs://${{ vars.GCP_PROJECT_PREFIX }}-prod-terraform-state/plans/prod
-          secrets: |
-            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Write Release Notes
-        shell: bash
-        run: |
-          {
-            echo "## Commits since v${{ steps.version.outputs.last-version || '0.0.0' }}"
-            echo
-            # commit-logs-path holds one "hash: <H>\nmessage: | \n <subject>\n <body...>" record per
-            # commit, separated by "---"; pull just the subject (record line 3, minus its 1-space
-            # indent) so each commit renders as a normal markdown bullet.
-            awk 'BEGIN { RS="\n---\n"; FS="\n" } NF>=3 { printf "- %s (%.7s)\n", substr($3,2), substr($1,7) }' \
-              "${{ steps.version.outputs.commit-logs-path }}"
-            echo
-            echo "### Terraform Plan for \`prod\` Environment"
-            echo
-            echo "<details>"
-            echo "<summary>Show Plan</summary>"
-            echo
-            echo '```hcl'
-            cat infrastructure/env/tfplan.txt
-            echo '```'
-            echo
-            echo "</details>"
-          } > RELEASE_NOTES.md
-
-      - name: Create Pre-Release
-        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
-        with:
-          tag_name: v${{ needs.version.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          prerelease: true
-          body_path: RELEASE_NOTES.md
+          pull_request_number: ${{ needs.release-please.outputs.pr_number }}
+        env:
+          TF_VAR_ci_service_account: ${{ vars.PROMOTE_SERVICE_ACCOUNT }}

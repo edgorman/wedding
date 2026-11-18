@@ -1,0 +1,119 @@
+name: 'Push Release'
+
+# A release-please release commit on main: the merge of its release PR, which changes only the files
+# release-please owns. push-commit.yaml skips such a push. Nothing deployable changed, so this
+# publishes the previous commit's bundle under the release commit (promotion deploys by commit
+# SHA, decision 9), tags the release, and promotes it to production (decision 11). It does not
+# deploy to staging, which already runs the same code, unless the bundle is missing and has to be
+# built, which also deploys it there.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'CHANGELOG.md'
+      - '.github/.release-please-manifest.json'
+
+permissions:
+  contents: read
+
+# Its own group, so a later push-commit.yaml run can never supersede a release that is waiting.
+concurrency:
+  group: push-release-main
+  cancel-in-progress: false
+
+jobs:
+  # A release is cut only for a commit that is live and healthy on staging (decision 11). The release
+  # commit changes nothing deployable, so what staging ran is the previous commit's: its
+  # push-commit.yaml run must have succeeded (deploys and smoke test), or, when that commit was
+  # itself a release commit, its push-release.yaml run. Otherwise this stops before tagging.
+  previous-commit:
+    # Skipped until root's bootstrap writes the repository variables (infrastructure/AGENTS.md); every other
+    # job waits on this one.
+    if: vars.WORKLOAD_IDENTITY_PROVIDER != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Require the previous commit's run to have succeeded
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PREVIOUS: ${{ github.event.before }}
+        run: |
+          for workflow in push-commit.yaml push-release.yaml; do
+            passed=$(gh run list --repo "$REPO" --workflow "$workflow" --branch main --commit "$PREVIOUS" --status success --json databaseId --jq length)
+            if [ "$passed" -gt 0 ]; then
+              echo "$workflow succeeded for $PREVIOUS."
+              exit 0
+            fi
+          done
+          echo "::error::No successful push-commit.yaml or push-release.yaml run for $PREVIOUS, the commit before this release. Fix or re-run it, then re-run this workflow."
+          exit 1
+
+  # The previous commit's bundle is copied under this commit in both environments. If it is missing,
+  # because that run was cancelled or aged out, this builds it from this commit, which has the same
+  # code.
+  artifacts:
+    needs: previous-commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Signed in once for every step below, including the composite action.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+      - uses: ./.github/actions/frontend-artifact
+        with:
+          reuse_from: ${{ github.event.before }}
+          gcp_project_id: ${{ vars.GCP_PROJECT_PREFIX }}-stag
+          prod_project_id: ${{ vars.GCP_PROJECT_PREFIX }}-prod
+
+  # Creates the tag and the GitHub release. It waits on the artifacts (the default `if` runs it only
+  # when they succeeded), so a tag always has the commit-SHA bundle promotion deploys.
+  release-please:
+    needs: artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      # The same token as push-commit.yaml's release-please job (decision 11).
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+      - id: secrets
+        uses: google-github-actions/get-secretmanager-secrets@bc9c54b29fdffb8a47776820a7d26e77b379d262 # v3.0.0
+        with:
+          secrets: |-
+            release_please_token: projects/${{ vars.GCP_ROOT_PROJECT }}/secrets/github_provider_token/versions/latest
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.secrets.outputs.release_please_token }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
+
+  # Deploys the release to production from the bundle already in prod's bucket (decision 11);
+  # rollback is promote-release.yaml run by hand.
+  promote:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/promote-release.yaml
+    with:
+      tag: ${{ needs.release-please.outputs.tag_name }}
+      sha: ${{ github.sha }}

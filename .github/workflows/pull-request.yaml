@@ -4,108 +4,98 @@ on:
   pull_request:
     branches:
       - main
-  # Runs the same required checks on a merge queue's merge commits. Inert while the repository is
-  # user-owned (GitHub only offers merge queues to organization-owned repositories, see
-  # .github/settings.yml), but ready the day one is turned on.
-  merge_group:
 
 permissions:
   contents: read
 
+env:
+  # The targets each required check hands to `moon ci`. `changed` reads the same variables to decide
+  # whether to run the check, so the two can't drift apart. `:name` means that task in any project.
+  LINT_CHECK_TARGETS: ':format :lint :typecheck :build :validate root:projects-covered root:decision-links root:markdown-lint'
+  TEST_TARGETS: ':test'
+
 concurrency:
-  # A merge_group event has no PR number; its ref (gh-readonly-queue/main/pr-N-<sha>) is unique
-  # per queue entry, so entries don't cancel each other.
-  group: pull-request-root-${{ github.event.pull_request.number || github.ref }}
+  group: pull-request-root-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  # moon decides which Terraform deployment(s) a diff reaches via `moon query affected`. There is
-  # no blanket .github/** glob here because none is needed: every deploy-{root,staging,prod}:plan
-  # task's own `inputs` already lists the exact composite actions and workflow files that
-  # environment's job depends on.
+  # moon decides what a diff reaches (decision 6): `moon query affected` lists the tasks whose inputs
+  # changed, and every job below gates on that list. Only moon, and not the toolchain it would run
+  # tasks with, is installed here (the moon-affected action), which keeps this job to a few seconds.
+  # The deploy-{root,staging,prod}:plan markers list a plan's own action and workflow
+  # file, so a change to push-commit.yaml or an apply-only action plans nothing.
   changed:
-    # Skipped until infrastructure/root's bootstrap writes the repository variables (see
-    # infrastructure/AGENTS.md), so an un-bootstrapped repository runs only the PR checks.
-    if: vars.WORKLOAD_IDENTITY_PROVIDER != ''
     runs-on: ubuntu-latest
     outputs:
-      infrastructure-root: ${{ steps.moon.outputs.root }}
-      infrastructure-staging: ${{ steps.moon.outputs.staging }}
-      infrastructure-prod: ${{ steps.moon.outputs.prod }}
+      lint-check: ${{ fromJSON(steps.affected.outputs.affected)['lint-check'] }}
+      test: ${{ fromJSON(steps.affected.outputs.affected).test }}
+      infrastructure-root: ${{ fromJSON(steps.affected.outputs.affected).root }}
+      infrastructure-staging: ${{ fromJSON(steps.affected.outputs.affected).staging }}
+      infrastructure-prod: ${{ fromJSON(steps.affected.outputs.affected).prod }}
     steps:
-      # moon needs full history to resolve the merge base - a shallow clone makes affected
-      # detection "inaccurate or fail entirely" (https://moonrepo.dev/docs/guides/ci).
+      # moon needs full history to resolve the merge base.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           filter: 'blob:none'
-      - uses: moonrepo/setup-toolchain@261c62cb5b0f580c7be7c8cd0f023a2e96756095 # v0.6.4
+      - id: affected
+        uses: ./.github/actions/moon-affected
         with:
-          auto-install: true
-          # Early CI runs each failed a different moon task with the identical
-          # `proto-shim: ... Permission denied (os error 13)` error, every time right after a
-          # toolchain cache hit - the cache restore losing proto's shim executable bit, not the
-          # task. Disabled until that's confirmed fixed upstream.
-          cache: false
-      - id: moon
-        name: Compute moon-affected deployments
-        shell: bash
-        env:
-          # `moon query affected` has no --base flag, but reads MOON_BASE the same way `moon ci`
-          # does (crates/app/src/queries/changed_files.rs) - set explicitly, matching the other jobs.
-          # On merge_group it is still right: checkout's fetch-depth 0 fetches origin/main, and the
-          # queue commit diffs against it as this PR plus any entries queued ahead of it - a
-          # superset, so an infrastructure/-only PR still plans every environment it reaches.
-          MOON_BASE: origin/main
-        run: |
-          # Left at the command's own defaults (no --upstream/--downstream): deploy-staging and
-          # deploy-prod's dependsOn on infra-env/deploy-root is apply ordering only, not an
-          # affectedness edge - the explicit project://infra-root / project://infra-env inputs are
-          # the intended signal.
-          moon query affected > affected.json
-          for env in root staging prod; do
-            # .tasks is omitted entirely when nothing is affected (moon's Affected struct skips
-            # empty maps on serialize), so `(.tasks // {})` guards against `has` erroring on null.
-            val=$(jq -r --arg t "deploy-$env:plan" '(.tasks // {}) | has($t)' affected.json)
-            echo "$env=$val" >> "$GITHUB_OUTPUT"
-          done
+          tasks: |
+            lint-check=${{ env.LINT_CHECK_TARGETS }}
+            test=${{ env.TEST_TARGETS }}
+            root=deploy-root:plan
+            staging=deploy-staging:plan
+            prod=deploy-prod:plan
 
-  # The required moon checks, one leg each, so each keeps its own check name. `:taskId` (no
-  # project prefix) is moon's "run in every project that has this task" scope
-  # (https://moonrepo.dev/docs/concepts/target); a project without a given task is silently skipped.
-  # - lint-check: every lint/format/build task. `:format`/`:validate` reach infra-root's and infra-env's inherited
-  #   `terraform fmt -check` and `terraform validate` (.moon/tasks/terraform.yml);
+  # The two `moon ci` checks, one job each (a matrix leg skipped at job level would report an
+  # unexpanded name). `required` below is what branch protection requires. `:taskId` (no project
+  # prefix) is moon's "run in every project that has this task" scope (https://moonrepo.dev/docs/concepts/target); a project
+  # without a given task is silently skipped. The targets are the workflow-level `env` above.
+  # - lint-check: every lint/format/build task. `:format`/`:validate` reach infra-root/infra-env's
+  #   inherited `terraform fmt -check` and `terraform validate` (.moon/tasks/terraform.yml);
   #   `:validate` is `runInCI: 'only'`, so this is the one place it runs at all.
-  # - test: every project's tests.
-  moon:
-    name: ${{ matrix.check }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - check: lint-check
-            targets: ':format :lint :typecheck :build :validate root:projects-covered'
-          - check: test
-            targets: ':test'
+  # - test: every test.
+  lint-check:
+    needs: changed
+    if: needs.changed.outputs.lint-check == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           filter: 'blob:none'
-      - uses: moonrepo/setup-toolchain@261c62cb5b0f580c7be7c8cd0f023a2e96756095 # v0.6.4
+      - uses: ./.github/actions/setup-moon
         with:
           auto-install: true
-          cache: false # see `changed`'s identical setup step above for why
       - name: moon ci
         shell: bash
-        run: moon ci ${{ matrix.targets }}
+        run: moon ci $LINT_CHECK_TARGETS
+        env:
+          MOON_BASE: origin/main
+
+  test:
+    needs: changed
+    if: needs.changed.outputs.test == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          filter: 'blob:none'
+      - uses: ./.github/actions/setup-moon
+        with:
+          auto-install: true
+      - name: moon ci
+        shell: bash
+        run: moon ci $TEST_TARGETS
         env:
           MOON_BASE: origin/main
 
   infrastructure-root:
     needs: changed
-    if: needs.changed.outputs.infrastructure-root == 'true'
+    # Skipped until root's bootstrap writes the repository variables (infrastructure/AGENTS.md).
+    if: needs.changed.outputs.infrastructure-root == 'true' && vars.WORKLOAD_IDENTITY_PROVIDER != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -113,29 +103,28 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - id: secrets
-        uses: ./.github/actions/gcp-secret-manager
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
-          project_id: ${{ vars.GCP_ROOT_PROJECT }}
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
-          secrets_list: |
-            TF_VAR_github_provider_token=github_provider_token
-            TF_VAR_cloudflare_account_id=cloudflare_account_id
-            TF_VAR_cloudflare_api_token=cloudflare_api_token
+          service_account: ${{ vars.PLAN_SERVICE_ACCOUNT }}
+      # The plan identity reads no secret (decision 19). The plan is made without refreshing, against
+      # placeholder tokens: 40 characters for Cloudflare (the provider validates the token's shape)
+      # and an empty one for GitHub (the provider's owner lookup is anonymous).
       - uses: ./.github/actions/terraform-pull-request
         with:
           terraform_directory: 'infrastructure/root'
           config_directory: 'infrastructure/config/root'
-          plan_dir: gs://${{ vars.GCP_ROOT_PROJECT }}-terraform-state/plans/root
-          secrets: ${{ steps.secrets.outputs.secrets }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          TF_VAR_github_provider_token: ''
+          TF_VAR_cloudflare_api_token: plan-only-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-  # infrastructure/env/** is shared, so a change to it plans against both environments - see the
-  # `changed` job above.
+  # infrastructure/env/** is shared, so a change to it plans against both environments (infra-env is
+  # an input of the staging and prod plan markers).
   infrastructure-staging:
     needs: changed
-    if: needs.changed.outputs.infrastructure-staging == 'true'
+    if: needs.changed.outputs.infrastructure-staging == 'true' && vars.WORKLOAD_IDENTITY_PROVIDER != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -147,19 +136,18 @@ jobs:
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
+          service_account: ${{ vars.PLAN_SERVICE_ACCOUNT }}
       - uses: ./.github/actions/terraform-pull-request
         with:
           terraform_directory: 'infrastructure/env'
           config_directory: 'infrastructure/config/staging'
-          plan_dir: gs://${{ vars.GCP_PROJECT_PREFIX }}-stag-terraform-state/plans/staging
-          secrets: |
-            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          TF_VAR_ci_service_account: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
 
   infrastructure-prod:
     needs: changed
-    if: needs.changed.outputs.infrastructure-prod == 'true'
+    if: needs.changed.outputs.infrastructure-prod == 'true' && vars.WORKLOAD_IDENTITY_PROVIDER != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -171,11 +159,31 @@ jobs:
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ vars.SERVICE_ACCOUNT }}
+          service_account: ${{ vars.PLAN_SERVICE_ACCOUNT }}
       - uses: ./.github/actions/terraform-pull-request
         with:
           terraform_directory: 'infrastructure/env'
           config_directory: 'infrastructure/config/prod'
-          secrets: |
-            TF_VAR_ci_service_account=${{ vars.SERVICE_ACCOUNT }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          TF_VAR_ci_service_account: ${{ vars.PROMOTE_SERVICE_ACCOUNT }}
+
+  # The one check this workflow requires (.github/settings.yml). The jobs above are skipped when a
+  # change doesn't reach them, which differs between a normal PR and a release PR, so requiring each
+  # by name would list skipped checks as required. This job always runs and fails only when a job
+  # that did run failed or was cancelled; a skipped job passes, as branch protection counts it.
+  required:
+    needs: [changed, lint-check, test, infrastructure-root, infrastructure-staging, infrastructure-prod]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check every job that ran passed
+        shell: bash
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          if [[ " $RESULTS " =~ " failure " || " $RESULTS " =~ " cancelled " ]]; then
+            echo "::error::A job failed or was cancelled."
+            exit 1
+          fi
