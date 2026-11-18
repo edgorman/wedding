@@ -1,5 +1,4 @@
-# The root project is created by hand (nothing exists yet to create it with) and imported here;
-# staging/prod are created by Terraform.
+# The root project is created by hand and imported here; staging and prod are created by Terraform.
 resource "google_project" "root_project" {
   name       = "${var.gcp_project_prefix} root"
   project_id = var.gcp_provider_project_id
@@ -64,30 +63,5 @@ resource "google_storage_bucket" "gcp_project_terraform_states" {
 
   versioning {
     enabled = true
-  }
-
-  # Saved plans (.github/actions/terraform-pull-request) live under plans/. 90 days covers the
-  # frontend retention window, past which a pre-release can't be promoted anyway; replaced or
-  # deleted plan versions go a week later. State objects are outside the prefix.
-  lifecycle_rule {
-    condition {
-      age            = 90
-      matches_prefix = ["plans/"]
-      with_state     = "ANY"
-    }
-    action {
-      type = "Delete"
-    }
-  }
-
-  lifecycle_rule {
-    condition {
-      days_since_noncurrent_time = 7
-      matches_prefix             = ["plans/"]
-      with_state                 = "ARCHIVED"
-    }
-    action {
-      type = "Delete"
-    }
   }
 }

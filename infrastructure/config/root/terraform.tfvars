@@ -7,15 +7,17 @@ gcp_projects            = ["stag", "prod"]
 github_repository_owner = "edgorman"
 github_repository_name  = "wedding"
 
+# Cloudflare dashboard > Workers & Pages, in the sidebar or the URL. Not a secret.
+cloudflare_account_id = "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID"
+
 site_name = "Ed and Katie's Wedding"
-# Custom domain, served through Cloudflare Pages. The zone must exist in the Cloudflare account.
-# The pages.dev subdomains (https://edward-katie-wedding-<stag|prod>.pages.dev) keep working too.
+# Custom domain, served by the Cloudflare Workers. The zone must exist in the Cloudflare account.
+# The workers.dev addresses (https://edward-katie-wedding-<stag|prod>.<your-account>.workers.dev) keep working too.
 cloudflare_zone    = "katieanded.com"
 frontend_hostnames = { stag = "dev.katieanded.com", prod = "katieanded.com" }
 
-# The following are sensitive/unknown initially and thus have no default
+# The following are sensitive and have no default
 # github_provider_token
-# cloudflare_account_id
 # cloudflare_api_token
 # — pass them at apply time, e.g.:
-#   TF_VAR_github_provider_token=<PAT> TF_VAR_cloudflare_account_id=<ID> TF_VAR_cloudflare_api_token=<TOK> make init
+#   TF_VAR_github_provider_token=<PAT> TF_VAR_cloudflare_api_token=<TOK> make init

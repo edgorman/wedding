@@ -1,6 +1,6 @@
 # The environment's frontend build bucket: one folder per commit SHA (that is its versioning; the
 # bucket itself has none). CI writes the built site here on merge and reads it back on deploy, and
-# Cloudflare Pages serves the extracted files. Not public. Named after the project because bucket
+# Cloudflare Workers serves the extracted files as static assets. Not public. Named after the project because bucket
 # names are global across GCS.
 resource "google_storage_bucket" "frontend" {
   name                        = "${var.gcp_project_id}-frontend"

@@ -15,7 +15,7 @@ variable "environment" {
 }
 
 variable "ci_service_account" {
-  description = "Email of the CI service account infrastructure/root creates, granted what CI needs on this environment's resources. The workflows pass the SERVICE_ACCOUNT Actions variable."
+  description = "Email of the service account infrastructure/root creates that writes this environment's frontend bucket. The workflows pass DEPLOY_SERVICE_ACCOUNT for staging and PROMOTE_SERVICE_ACCOUNT for prod."
   type        = string
 }
 
