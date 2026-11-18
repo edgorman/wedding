@@ -35,4 +35,4 @@ Read the root [`AGENTS.md`](../AGENTS.md) and the `AGENTS.md` of the area you're
 
 - Start from an issue (see [`CONTRIBUTING.md`](../.github/CONTRIBUTING.md)).
 - Title it as a Conventional Commit, e.g. `feat(frontend): add the venue details`. The title becomes the commit on `main` and decides the version.
-- Fill in the PR template. CI runs the checks from step 3 plus the title check. A code owner reviews, and on merge the change deploys to staging. Production is a separate promotion; nothing is deployed by hand.
+- Fill in the PR template. CI runs the checks from step 3 plus the title check. A code owner reviews, and on merge the change deploys to staging and release-please updates the release PR. Merging that PR promotes the release to production; nothing is deployed by hand. The whole path, and how to roll back, is in [`ci-cd.md`](ci-cd.md).
