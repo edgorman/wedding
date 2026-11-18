@@ -4,17 +4,15 @@ description: 'Installs dependencies and builds the frontend production bundle'
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
-      with:
-        node-version: '22'
-        cache: 'npm'
-        cache-dependency-path: services/frontend/package-lock.json
+    - uses: ./.github/actions/frontend-node
 
     - name: Install Dependencies
       shell: bash
       working-directory: services/frontend
       run: npm ci
 
+    # The bundle is environment-neutral, so one dist/ serves every environment; what differs is
+    # written at deploy time as config.json (decision 9).
     - name: Build
       shell: bash
       working-directory: services/frontend

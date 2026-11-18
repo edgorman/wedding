@@ -1,0 +1,33 @@
+name: 'Frontend Artifact'
+description: 'Publishes the frontend to both environments'' buckets under the commit SHA: builds the bundle, or re-publishes the one from reuse_from when it is unchanged'
+
+inputs:
+  reuse_from:
+    description: 'Commit SHA whose published bundle to reuse instead of building. Falls back to building if that folder is missing. Omit to build.'
+    required: false
+    default: ''
+  gcp_project_id:
+    description: 'GCP project of the staging frontend bucket'
+    required: true
+  prod_project_id:
+    description: 'GCP project of the production frontend bucket'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - id: reuse
+      name: Reuse the unchanged frontend
+      if: inputs.reuse_from != ''
+      continue-on-error: true
+      uses: ./.github/actions/frontend-fetch
+      with:
+        gcp_project_id: ${{ inputs.gcp_project_id }}
+        sha: ${{ inputs.reuse_from }}
+    - if: steps.reuse.outcome != 'success'
+      uses: ./.github/actions/frontend-build
+    - uses: ./.github/actions/frontend-publish
+      with:
+        gcp_project_id: ${{ inputs.gcp_project_id }}
+        prod_project_id: ${{ inputs.prod_project_id }}
+        sha: ${{ github.sha }}

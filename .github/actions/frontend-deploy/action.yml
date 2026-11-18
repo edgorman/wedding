@@ -1,34 +1,69 @@
 name: 'Frontend Deploy'
-description: 'Deploys an already-built frontend to Cloudflare Pages'
+description: 'Deploys an already-built frontend, with its Worker, to Cloudflare Workers'
 
 inputs:
-  secrets:
-    description: 'Newline-separated CLOUDFLARE_API_TOKEN=... / CLOUDFLARE_ACCOUNT_ID=... pairs (see gcp-secret-manager)'
+  cloudflare_api_token:
+    description: 'Cloudflare API token, read from Secret Manager by the calling job'
+    required: true
+  cloudflare_account_id:
+    description: 'The Cloudflare account id, the CLOUDFLARE_ACCOUNT_ID repository variable. Not a secret.'
     required: true
   cloudflare_project_name:
-    description: 'Cloudflare Pages project name'
+    description: 'Name of the Cloudflare Worker to deploy to'
     required: true
   dist_directory:
     description: 'Directory of already-built static files to deploy, relative to services/frontend'
     required: false
     default: 'dist'
+  version:
+    description: 'Release tag written into config.json for the app to display and link to its GitHub release (see .github/AGENTS.md) - on staging the short commit SHA (staging runs a commit, not a release), on production the tag actually promoted. Omit to leave it out of config.json.'
+    required: false
+    default: ''
+  environment:
+    description: 'Environment name written into config.json - "staging" or "production" (see .github/AGENTS.md). Omit to leave it out of config.json.'
+    required: false
+    default: ''
+  site_url:
+    description: 'Canonical (production) URL of the site, the PRODUCTION_URL repository variable on every environment, written into config.json for the Worker. Omit to leave it out of config.json.'
+    required: false
+    default: ''
+  site_name:
+    description: 'Display name of the site (the SITE_NAME repository variable), written into config.json. Omit to leave it out of config.json.'
+    required: false
+    default: ''
 
 runs:
   using: "composite"
   steps:
-    # Passed through the environment rather than interpolated; see terraform-pull-request.
-    - name: Export Secrets
+    # Written next to the static files so one build serves any environment (decision 9). Empty
+    # inputs are dropped, so a missing field and an empty one read alike.
+    - name: Write Runtime Config
       shell: bash
       env:
-        SECRETS: ${{ inputs.secrets }}
-      run: printf '%s\n' "$SECRETS" >> "$GITHUB_ENV"
+        VERSION: ${{ inputs.version }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        SITE_URL: ${{ inputs.site_url }}
+        SITE_NAME: ${{ inputs.site_name }}
+        GITHUB_REPO: ${{ github.repository }}
+        CONFIG_PATH: services/frontend/${{ inputs.dist_directory }}/config.json
+      run: |
+        jq -n \
+          --arg version "$VERSION" \
+          --arg environment "$ENVIRONMENT" \
+          --arg siteUrl "$SITE_URL" \
+          --arg siteName "$SITE_NAME" \
+          --arg githubRepo "$GITHUB_REPO" \
+          '{version: $version, environment: $environment, siteUrl: $siteUrl, siteName: $siteName, githubRepo: $githubRepo} | with_entries(select(.value != ""))' \
+          > "$CONFIG_PATH"
 
-    # --branch=main is required: wrangler infers production vs. preview from GITHUB_REF_NAME, which
-    # is the release tag on a `release` event, and would silently deploy as Preview.
-    - name: Deploy to Cloudflare Pages
+    # `--name` is how one bundle serves every environment: wrangler.jsonc carries a placeholder and
+    # the deploy names the Worker Terraform created for this environment.
+    - name: Deploy to Cloudflare Workers
       uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4.1.3
       with:
-        apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
-        accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+        apiToken: ${{ inputs.cloudflare_api_token }}
+        accountId: ${{ inputs.cloudflare_account_id }}
         workingDirectory: services/frontend
-        command: pages deploy ${{ inputs.dist_directory }} --project-name=${{ inputs.cloudflare_project_name }} --branch=main
+        # renovate: datasource=npm depName=wrangler
+        wranglerVersion: '4.163.0'
+        command: deploy --name ${{ inputs.cloudflare_project_name }} --assets ${{ inputs.dist_directory }}
