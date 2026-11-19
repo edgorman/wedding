@@ -1,0 +1,56 @@
+name: 'Frontend Staging'
+description: 'Publishes the frontend to both environments'' buckets under the commit SHA and deploys it to staging: builds the bundle, or re-publishes the one from reuse_from when it is unchanged'
+
+inputs:
+  reuse_from:
+    description: 'Commit SHA whose published bundle to reuse instead of building, when the frontend is unchanged. Falls back to building if that folder is missing. Omit to build.'
+    required: false
+    default: ''
+  cloudflare_account_id:
+    description: 'The Cloudflare account id, the CLOUDFLARE_ACCOUNT_ID repository variable. Not a secret.'
+    required: true
+  root_project_id:
+    description: 'GCP root project, where the Cloudflare token lives in Secret Manager'
+    required: true
+  gcp_project_id:
+    description: 'GCP project of the staging frontend bucket and artifact stores'
+    required: true
+  prod_project_id:
+    description: 'GCP project of the production frontend bucket'
+    required: true
+  worker_name:
+    description: 'Name of the staging Cloudflare Worker to deploy to'
+    required: true
+  site_url:
+    description: 'Canonical (production) URL of the site, the PRODUCTION_URL repository variable. Staging shows production''s URL too, so it never competes with it in search results.'
+    required: true
+  site_name:
+    description: 'Display name of the site, the SITE_NAME repository variable'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - id: secrets
+      uses: google-github-actions/get-secretmanager-secrets@bc9c54b29fdffb8a47776820a7d26e77b379d262 # v3.0.0
+      with:
+        secrets: |-
+          cloudflare_api_token: projects/${{ inputs.root_project_id }}/secrets/cloudflare_api_token/versions/latest
+    - id: short
+      shell: bash
+      run: echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+    - uses: ./.github/actions/frontend-artifact
+      with:
+        reuse_from: ${{ inputs.reuse_from }}
+        gcp_project_id: ${{ inputs.gcp_project_id }}
+        prod_project_id: ${{ inputs.prod_project_id }}
+    - uses: ./.github/actions/frontend-deploy
+      with:
+        cloudflare_api_token: ${{ steps.secrets.outputs.cloudflare_api_token }}
+        cloudflare_project_name: ${{ inputs.worker_name }}
+        cloudflare_account_id: ${{ inputs.cloudflare_account_id }}
+        # Staging runs a commit, so it shows the short SHA; production shows its release tag (decision 11).
+        version: ${{ steps.short.outputs.sha }}
+        environment: 'staging'
+        site_url: ${{ inputs.site_url }}
+        site_name: ${{ inputs.site_name }}

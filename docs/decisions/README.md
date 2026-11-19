@@ -1,37 +1,29 @@
 # Decision records
 
-One file per decision: its context, the decision, and its consequences. The rules that follow from them are in the `AGENTS.md` files, each linking here. A record changes only when it is superseded: write a new one, and mark the old one `Superseded by N`.
+One file per decision: its context, the decision, and its consequences. The rules that follow from them are in the `AGENTS.md` files, each linking here.
 
-These records came with the repository's template. Those marked superseded no longer apply; number new ones from the next free number.
+Edit a record in place when its decision changes, and number a new one from the next free number.
 
 | # | Decision | Area |
 | --- | --- | --- |
 | [1](0001-manifests-live-with-their-code.md) | Manifests live with their code | repo |
-| [2](0002-generated-code-is-committed.md) | Generated code is committed, next to the code that uses it (superseded by 28) | protos |
-| [3](0003-pin-every-codegen-tool.md) | Every codegen tool is pinned exactly (superseded by 28) | protos |
-| [4](0004-ts-proto-options.md) | ts-proto options (superseded by 28) | protos |
-| [5](0005-protos-model-the-wire.md) | Protos model the wire, not the domain or the datastore (superseded by 28) | protos |
-| [6](0006-protojson-settings.md) | protojson settings (superseded by 28) | protos |
-| [7](0007-visibility-is-a-string.md) | Visibility is a string, not an enum (superseded by 28) | protos |
-| [8](0008-no-hand-written-wire-types.md) | No hand-written wire types, enforced in CI (superseded by 28) | protos |
-| [9](0009-wire-changes-across-releases.md) | Wire changes across the release window (superseded by 28) | protos |
-| [10](0010-one-access-policy-table.md) | One access policy table, closed by default (superseded by 28) | backend |
-| [11](0011-moon-not-pants.md) | moon, not Pants | ci |
-| [12](0012-hand-declared-moon-graph.md) | A hand-declared moon graph, affected by changed files only | ci |
-| [13](0013-deploy-markers.md) | Deploy decisions come from marker tasks | ci |
-| [14](0014-prototools-pins-the-toolchain.md) | `.prototools` is the single source of tool versions | ci |
-| [15](0015-build-once-promote-by-sha.md) | Build once, promote by commit SHA | ci |
-| [16](0016-pre-release-gates.md) | What a pre-release waits for | ci |
-| [17](0017-manual-prod-infrastructure-apply.md) | A manual prod apply, for bootstrapping only | ci |
-| [18](0018-versions-from-conventional-commits.md) | Versions come from Conventional Commit subjects | ci |
-| [19](0019-one-gcp-project-per-environment.md) | One GCP project per environment, plus a root | infrastructure |
-| [20](0020-workload-identity-federation.md) | CI authenticates with Workload Identity Federation | infrastructure |
-| [21](0021-per-environment-artifact-stores.md) | Each environment has its own artifact stores | infrastructure |
-| [22](0022-artifact-retention.md) | Artifact retention keeps recent merges and every release | infrastructure |
-| [23](0023-monitoring-on-cloud-run-metrics.md) | Monitoring watches Cloud Run's own metrics (superseded by 28) | infrastructure |
-| [24](0024-debug-endpoint-contract.md) | The debug endpoint contract (superseded by 28) | backend |
-| [25](0025-apply-saved-plans.md) | Applies use the plan already shown | ci |
-| [26](0026-build-only-what-changed.md) | Build only what changed, reuse the rest | ci |
-| [27](0027-artifact-stores-in-root.md) | Artifact stores are created by root, not by each environment | infrastructure |
-| [28](0028-static-site-only.md) | A static site only, with no backend | repo |
-| [29](0029-env-terraform-kept.md) | Per-environment Terraform is kept, and owns each environment's frontend bucket | infrastructure |
+| [2](0002-a-static-site-with-no-backend.md) | A static site with no backend | repo |
+| [3](0003-moon-runs-the-build.md) | moon runs the build and CI | ci |
+| [4](0004-hand-declared-moon-graph.md) | A hand-declared moon graph, affected by changed files only | ci |
+| [5](0005-deploy-markers.md) | Deploy decisions come from marker tasks | ci |
+| [6](0006-moon-gates-every-ci-job.md) | moon decides which CI jobs run | ci |
+| [7](0007-prototools-pins-the-toolchain.md) | `.prototools` is the single source of tool versions | ci |
+| [8](0008-toolchain-cache-is-off.md) | The toolchain cache is off in CI | ci |
+| [9](0009-build-once-promote-by-sha.md) | Build once, promote by commit SHA | ci |
+| [10](0010-build-only-what-changed.md) | Build only what changed, reuse the rest | ci |
+| [11](0011-releases-from-release-please.md) | Releases come from release-please | ci |
+| [12](0012-release-commits-have-their-own-workflow.md) | Release commits have their own workflow | ci |
+| [13](0013-manual-prod-infrastructure-apply.md) | A manual prod apply, for backfilling only | ci |
+| [14](0014-replan-at-apply.md) | Applies re-plan instead of applying a saved plan | ci |
+| [15](0015-advisory-security-scanning.md) | Security scanning is advisory | ci |
+| [16](0016-skip-secrets-scan-on-docs-lint-markdown.md) | The secrets scan skips docs, and Markdown is linted | ci |
+| [17](0017-self-hosted-renovate.md) | Dependency updates come from self-hosted Renovate | ci |
+| [18](0018-one-gcp-project-per-environment.md) | One GCP project per environment, plus a root | infrastructure |
+| [19](0019-plan-and-apply-identities.md) | Plan and apply authenticate as separate identities | infrastructure |
+| [20](0020-frontend-bucket-lives-in-env-terraform.md) | Each environment's frontend bucket is created by its own Terraform | infrastructure |
+| [21](0021-artifact-retention.md) | Artifact retention keeps recent merges | infrastructure |

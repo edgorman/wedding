@@ -1,7 +1,6 @@
 $schema: '../cache/schemas/tasks.json'
 
-# Inherited by every project (no `inheritedBy`). A task's own `inputs` never list the moon.yml that
-# declares it, so without this an edit to a task's command in a PR - say services/frontend:lint's -
-# left that task unaffected, and a broken command merged green.
+# Inherited by every project. A task's `inputs` never list its own moon.yml, so without this an edit
+# to a task's command left it unaffected and a broken command merged green.
 implicitInputs:
   - 'moon.yml'

@@ -1,0 +1,125 @@
+name: 'Security'
+
+# Advisory scanning (decision 15): every scanner reports what it finds in the job summary and as a
+# warning, and none of them fails a run or is a required check. A scanner that cannot run at all
+# does fail (.github/scripts/advisory.sh). Everything here is an open-source CLI run as an ordinary
+# job, so it works on any plan; code scanning and secret scanning from GitHub need a paid one.
+on:
+  pull_request:
+    branches:
+      - main
+  # New advisories land without a commit, so main is scanned weekly too.
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # moon decides which scanners a pull request reaches (decision 6): each is a noop marker task
+  # (scan, scan-workflows, scan-secrets) whose `inputs` are what the scanner
+  # reads. No scanner is a required check (decision 15), so a skipped job costs a merge nothing. The
+  # weekly scan and a manual run have no diff, so they run everything.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ github.event_name != 'pull_request' || fromJSON(steps.affected.outputs.affected || '{}').frontend }}
+      workflows: ${{ github.event_name != 'pull_request' || fromJSON(steps.affected.outputs.affected || '{}').workflows }}
+      terraform: ${{ github.event_name != 'pull_request' || fromJSON(steps.affected.outputs.affected || '{}').terraform }}
+      secrets: ${{ github.event_name != 'pull_request' || fromJSON(steps.affected.outputs.affected || '{}').secrets }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          filter: 'blob:none'
+      - id: affected
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/moon-affected
+        with:
+          # Either Terraform root is enough for tflint and trivy, which read the whole tree.
+          tasks: |
+            frontend=services/frontend:scan
+            workflows=root:scan-workflows
+            secrets=root:scan-secrets
+            terraform=infra-root:scan infra-env:scan
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: ./.github/actions/frontend-node
+      - name: npm audit
+        working-directory: services/frontend
+        run: ../../.github/scripts/advisory.sh 'npm audit' 1 npm audit --omit=dev
+
+  workflows:
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install scanners
+        run: |
+          # renovate: datasource=go depName=github.com/rhysd/actionlint
+          GOBIN="$RUNNER_TEMP/bin" go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          # renovate: datasource=pypi depName=zizmor
+          pip install --user zizmor==1.32.0
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: actionlint
+        run: .github/scripts/advisory.sh actionlint 1 actionlint
+      - name: zizmor
+        # --no-exit-codes: zizmor otherwise exits 10-14 by severity of what it found.
+        run: .github/scripts/advisory.sh zizmor 1 zizmor --no-exit-codes .github
+
+  terraform:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install tflint
+        run: |
+          # renovate: datasource=go depName=github.com/terraform-linters/tflint
+          GOBIN="$RUNNER_TEMP/bin" go install github.com/terraform-linters/tflint@v0.66.0
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: tflint
+        working-directory: infrastructure
+        run: ../.github/scripts/advisory.sh tflint 2 tflint --recursive
+      - name: trivy config
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: infrastructure
+          # Advisory: report, never fail.
+          exit-code: '0'
+
+  secrets:
+    needs: changes
+    if: needs.changes.outputs.secrets == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          # renovate: datasource=go depName=github.com/zricethezav/gitleaks/v8
+          GOBIN="$RUNNER_TEMP/bin" go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: gitleaks
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          # A PR is scanned for what it adds; main, in full. --exit-code 2 keeps "found a leak"
+          # apart from the tool failing, which exits 1.
+          range=()
+          if [ "$EVENT" = pull_request ]; then range=(--log-opts "origin/main..HEAD"); fi
+          .github/scripts/advisory.sh gitleaks 2 gitleaks detect --no-banner --redact --exit-code 2 "${range[@]}"

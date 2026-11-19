@@ -1,9 +1,15 @@
+# renovate: datasource=github-releases depName=moonrepo/moon extractVersion=^v(?<version>.+)$
 moon = "2.5.5"
+# renovate: datasource=node-version depName=node
 node = "22"            # matches setup-node '22' in both workflows today
+# renovate: datasource=npm depName=npm
 npm = "10.9.7"         # version bundled with Node 22 today; no prior pin existed to match
+# renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
 terraform = "1.15.8"   # matches setup-terraform and every providers.tf required_version
 
 [plugins]
-# Third-party proto plugin, pinned to a commit SHA rather than a branch. It verifies checksums on
-# download (checksum-url is set for every platform).
+# Third-party proto plugin (proto's registry/data/third-party.json), pinned to a commit SHA rather
+# than a branch, so this pins what it is fetched from rather than trusting whatever a moving ref
+# resolves to at install time. It verifies checksums on download (checksum-url is set for every
+# platform).
 terraform = "https://raw.githubusercontent.com/theomessin/proto-toml-plugins/b0f45e8bcc34310db680828cab62850328964996/terraform.toml"

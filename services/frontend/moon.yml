@@ -3,17 +3,15 @@ language: 'typescript'
 layer: 'application'
 stack: 'frontend'
 tags: ['typescript']
-# .moon/toolchains.yml never enables the typescript toolchain workspace-wide (its sync rewrites
-# tsconfig project references, and these tsconfigs are hand-maintained) - restated here so this
-# project stays safe even if that ever changes elsewhere in the workspace.
+
+# The typescript toolchain stays off: its sync rewrites the hand-maintained tsconfig references.
 toolchains:
   typescript: false
-# moon's own dependency install is disabled workspace-wide (.moon/toolchains.yml's `javascript`
-# entry, the only place that setting is read), so `install` below is the one `npm ci` every task
-# depends on.
+# moon's own dependency install is off workspace-wide (.moon/toolchains.yml), so `install` is the
+# one `npm ci` every task depends on.
 
 fileGroups:
-  sources: ['src/**/*', 'public/**/*', 'index.html', 'vite.config.ts']
+  sources: ['src/**/*', 'public/**/*', 'worker/**/*', 'index.html', 'vite.config.ts', 'wrangler.jsonc']
   configs: ['package.json', 'package-lock.json', 'tsconfig*.json', '.oxlintrc.json']
 
 tasks:
@@ -38,24 +36,34 @@ tasks:
     command: 'npm run build'
     deps: ['install']
     inputs: ['@group(sources)', '@group(configs)']
-    # The whole folder, not a glob - moon deletes files under `outputs` that don't match on
-    # cache hydration, and narrowing this would make a hydrated build lose files vite wrote.
+    # The whole folder, not a glob: moon deletes files under `outputs` that don't match on hydration.
     outputs: ['dist']
   dev:
     command: 'npm run dev'
     deps: ['install']
     preset: 'server'
   # A marker task, like the deploy-*:plan ones: its 'inputs' decide whether a merge rebuilds the
-  # bundle or reuses the last release's (push-commit.yaml's `changed` job, decision 26).
+  # bundle or reuses the last release's (push-commit.yaml's `changed` job, decision 10).
   publish:
     command: 'noop'
     inputs:
       - '@group(sources)'
       - '@group(configs)'
+      - '/.github/actions/frontend-artifact/**/*'
       - '/.github/actions/frontend-build/**/*'
+      - '/.github/actions/frontend-node/**/*'
       - '/.github/actions/frontend-publish/**/*'
-      - '/.github/workflows/push-commit.yaml'
     options:
-      # Not runInCI: false - see infrastructure/config/root/moon.yml's comment: excluding it from CI
-      # hides it from moon query affected's CI-mode results, which push-commit's `changed` reads.
+      cache: false
+
+  # Marker for security.yaml's frontend job: npm audit reads the lockfile.
+  scan:
+    command: 'noop'
+    inputs:
+      - '@group(configs)'
+      - '/.prototools'
+      - '/.github/actions/frontend-node/**/*'
+      - '/.github/workflows/security.yaml'
+      - '/.github/scripts/advisory.sh'
+    options:
       cache: false

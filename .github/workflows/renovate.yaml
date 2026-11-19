@@ -1,0 +1,47 @@
+name: 'Renovate'
+
+# Self-hosted dependency updates (decision 17): one grouped PR per ecosystem, weekly, from
+# .github/renovate.json5. It runs with the personal access token in Secret Manager, as an identity
+# that reads that one secret (decision 19).
+on:
+  schedule:
+    - cron: '37 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    # Skipped until infrastructure/root's bootstrap writes the repository variables
+    # (infrastructure/AGENTS.md). GitHub pauses a schedule after 60 days without repository activity;
+    # running this by hand (workflow_dispatch) restarts it.
+    if: vars.WORKLOAD_IDENTITY_PROVIDER != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.RENOVATE_SERVICE_ACCOUNT }}
+      - id: secrets
+        uses: google-github-actions/get-secretmanager-secrets@bc9c54b29fdffb8a47776820a7d26e77b379d262 # v3.0.0
+        with:
+          secrets: |-
+            renovate_token: projects/${{ vars.GCP_ROOT_PROJECT }}/secrets/github_provider_token/versions/latest
+      - uses: renovatebot/github-action@acdd6bda8b035c99ce59d5675816af2aa65a1774 # v46.3.14
+        with:
+          token: ${{ steps.secrets.outputs.renovate_token }}
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_ONBOARDING: 'false'
+          RENOVATE_REQUIRE_CONFIG: 'required'
+          LOG_LEVEL: info

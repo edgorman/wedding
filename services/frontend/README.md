@@ -1,6 +1,6 @@
 # frontend
 
-The wedding website: a static Vite/React page deployed to Cloudflare Pages. There is no backend.
+The wedding website: a static Vite/React page deployed to a Cloudflare Worker. There is no backend.
 
 ```sh
 moon run services/frontend:dev    # dev server

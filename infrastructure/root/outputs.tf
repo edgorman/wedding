@@ -13,17 +13,22 @@ output "workload_identity_provider" {
   value       = google_iam_workload_identity_pool_provider.github_provider.name
 }
 
-output "github_actions_service_account_email" {
-  description = "Email of the GitHub Actions service account (also written to the SERVICE_ACCOUNT Actions variable)"
-  value       = google_service_account.github_actions.email
+output "github_service_accounts" {
+  description = "Emails of the GitHub Actions identities: plan (read-only), deploy (main, push-commit.yaml), promote (main, prod) and renovate. Also written to the *_SERVICE_ACCOUNT Actions variables."
+  value = {
+    plan     = google_service_account.github_plan.email
+    deploy   = google_service_account.github_deploy.email
+    promote  = google_service_account.github_promote.email
+    renovate = google_service_account.github_renovate.email
+  }
 }
 
-output "frontend_subdomains" {
-  description = "pages.dev subdomain of each environment's Cloudflare Pages project"
-  value       = { for k, v in cloudflare_pages_project.frontend : k => v.subdomain }
+output "frontend_workers_dev_urls" {
+  description = "workers.dev address of each environment's Cloudflare Worker"
+  value       = { for k, v in cloudflare_worker.frontend : k => v.subdomain.url }
 }
 
 output "frontend_domains" {
-  description = "Custom domain bound to each environment's Cloudflare Pages project, if any"
-  value       = { for k, v in cloudflare_pages_domain.frontend : k => v.name }
+  description = "Custom domain bound to each environment's Cloudflare Worker, if any"
+  value       = { for k, v in cloudflare_workers_custom_domain.frontend : k => v.hostname }
 }

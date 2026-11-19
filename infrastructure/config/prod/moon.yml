@@ -1,13 +1,12 @@
 $schema: '../../../.moon/cache/schemas/project.json'
-# The dependency on deploy-root is apply ordering, not a build edge - modelled here only so
-# `moon project-graph` reads correctly (prod's own apply ordering lives in promote-release.yaml
-# and apply-infrastructure-prod.yaml, not push-commit.yaml - prod never applies on a bare merge).
+# The dependency on deploy-root is apply ordering, not a build edge, modelled so `moon
+# project-graph` reads right; prod applies in promote-release.yaml, never on a bare merge.
 dependsOn: ['infra-env', 'deploy-root']
 tags: ['deployment']
 
 tasks:
-  # A marker task: 'inputs' is the real point of it, defining exactly what reaches this
-  # environment's plan/apply. Its own plan/apply run in the workflow job with WIF creds, not here.
+  # Marker for pull-request.yaml's plan job: 'inputs' define what reaches this
+  # environment's PR plan. Only the plan's own action and workflow are listed.
   plan:
     command: 'noop'
     inputs:
@@ -15,13 +14,7 @@ tasks:
       - 'terraform.tfvars'
       - 'project://infra-env'
       - '/.github/actions/terraform-pull-request/**/*'
-      - '/.github/actions/terraform-push-commit/**/*'
       - '/.github/workflows/pull-request.yaml'
-      - '/.github/workflows/push-commit.yaml'
-      - '/.github/workflows/promote-release.yaml'
-      - '/.github/workflows/apply-infrastructure-prod.yaml'
     options:
-      # Not runInCI: false - see infrastructure/config/root/moon.yml's comment: a noop task is
-      # harmless for moon-ci to execute, and excluding it from CI also hides it from
-      # moon query affected's CI-mode results, which the workflows' `changed` jobs need.
+      # Never runInCI: false (decision 5).
       cache: false

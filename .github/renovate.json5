@@ -1,0 +1,86 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+  ],
+  semanticCommits: 'enabled',
+  semanticCommitType: 'build',
+  semanticCommitScope: 'deps',
+  dependencyDashboard: {
+    enabled: true,
+  },
+  prConcurrentLimit: 0,
+  prHourlyLimit: 0,
+  customManagers: [
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^\\.prototools$/',
+        '/\\.ya?ml$/',
+        '/\\.sh$/',
+      ],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\n[^\\n]*?[@=:]\\s*["\']?(?<currentValue>v?\\d+(?:\\.\\d+)*)',
+      ],
+    },
+  ],
+  packageRules: [
+    {
+      matchManagers: [
+        'github-actions',
+      ],
+      groupName: 'ci-deps',
+      labels: [
+        'ci',
+      ],
+    },
+    {
+      matchManagers: [
+        'terraform',
+      ],
+      groupName: 'infrastructure-deps',
+      labels: [
+        'infrastructure',
+      ],
+    },
+    {
+      matchManagers: [
+        'npm',
+      ],
+      matchFileNames: [
+        'services/frontend/**',
+      ],
+      groupName: 'frontend-deps',
+      labels: [
+        'frontend',
+      ],
+    },
+    {
+      matchManagers: [
+        'custom.regex',
+      ],
+      groupName: 'ci-deps',
+      labels: [
+        'ci',
+      ],
+    },
+    {
+      matchPackageNames: [
+        'hashicorp/terraform',
+      ],
+      groupName: 'infrastructure-deps',
+      labels: [
+        'infrastructure',
+      ],
+    },
+    {
+      matchPackageNames: [
+        'npm',
+      ],
+      matchUpdateTypes: [
+        'major',
+      ],
+      enabled: false,
+    },
+  ],
+}

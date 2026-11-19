@@ -1,38 +1,106 @@
-# WIF identity GitHub Actions uses to authenticate to GCP without a long-lived JSON key.
-
-resource "google_service_account" "github_actions" {
+# Four identities for GitHub Actions to authenticate to GCP as, with no long-lived JSON key:
+#
+#   plan    read-only; assumable by any run in this repository, which is what the PR checks use.
+#   deploy  push-commit.yaml and push-release.yaml as they exist on main: root and staging applies,
+#           builds, staging deploys, and reading the tokens release-please and Cloudflare need.
+#   promote promote-release.yaml and apply-infrastructure-prod.yaml as they exist on main: prod's
+#           apply and deploy. Only prod's project, state bucket and the Cloudflare token.
+#   renovate renovate.yaml as it exists on main: it reads the GitHub PAT and nothing else, because
+#           it runs a third-party action.
+#
+# The apply identities are bound on the workflow file and the ref it is loaded from (the
+# job_workflow_ref claim, e.g. <repo>/.github/workflows/push-commit.yaml@refs/heads/main). A pull
+# request's runs carry refs/pull/<n>/merge and match none of those bindings.
+#
+# Limits. Root owns IAM for every project, so the deploy identity can change IAM on prod. Anything
+# that can push to main can change the workflows the apply identities are bound to.
+resource "google_service_account" "github_plan" {
   project      = var.gcp_provider_project_id
-  account_id   = "github-actions"
-  display_name = "GitHub Actions Service Account"
+  account_id   = "github-plan"
+  display_name = "GitHub Actions - plan (read-only)"
 }
 
-# Granted per-project on root and every environment, never org- or folder-wide.
-resource "google_project_iam_member" "github_actions_editor" {
-  for_each = local.all_projects
-
-  project = each.value.project_id
-  role    = "roles/editor"
-  member  = "serviceAccount:${google_service_account.github_actions.email}"
+resource "google_service_account" "github_deploy" {
+  project      = var.gcp_provider_project_id
+  account_id   = "github-deploy"
+  display_name = "GitHub Actions - deploy (main, push-commit.yaml and push-release.yaml)"
 }
 
-# roles/editor excludes IAM management, which this root's own applies need.
-resource "google_project_iam_member" "github_actions_iam_admin" {
-  for_each = local.all_projects
-
-  project = each.value.project_id
-  role    = "roles/resourcemanager.projectIamAdmin"
-  member  = "serviceAccount:${google_service_account.github_actions.email}"
+resource "google_service_account" "github_renovate" {
+  project      = var.gcp_provider_project_id
+  account_id   = "github-renovate"
+  display_name = "GitHub Actions - Renovate (main)"
 }
 
-# The frontend bucket's writer binding in infrastructure/env/storage.tf needs storage.buckets.setIamPolicy,
-# which roles/editor excludes the same way it excludes setIamPolicy on the resources above.
-# storage.buckets.create itself needs no extra grant - that part is already covered by editor.
-resource "google_project_iam_member" "github_actions_storage_admin" {
-  for_each = local.all_projects
+resource "google_service_account" "github_promote" {
+  project      = var.gcp_provider_project_id
+  account_id   = "github-promote"
+  display_name = "GitHub Actions - promote to prod (main)"
+}
 
-  project = each.value.project_id
-  role    = "roles/storage.admin"
-  member  = "serviceAccount:${google_service_account.github_actions.email}"
+locals {
+  repository = "${var.github_repository_owner}/${var.github_repository_name}"
+
+  # What a plan reads: viewer (resources and state) and securityReviewer (IAM policies).
+  plan_roles = [
+    "roles/viewer",
+    "roles/iam.securityReviewer",
+  ]
+
+  # What an apply manages with, and why each is needed beyond roles/editor:
+  #   projectIamAdmin editor excludes IAM management, which this root's own applies need.
+  #   storage.admin   the frontend bucket's binding in env/storage.tf needs
+  #                   storage.buckets.setIamPolicy, which editor excludes.
+  apply_roles = [
+    "roles/editor",
+    "roles/resourcemanager.projectIamAdmin",
+    "roles/storage.admin",
+  ]
+
+  # Granted per project, never org- or folder-wide.
+  plan_grants = {
+    for pair in setproduct(keys(local.all_projects), local.plan_roles) :
+    "${pair[0]}-${pair[1]}" => { project = local.all_projects[pair[0]].project_id, role = pair[1] }
+  }
+  deploy_grants = {
+    for pair in setproduct(keys(local.all_projects), local.apply_roles) :
+    "${pair[0]}-${pair[1]}" => { project = local.all_projects[pair[0]].project_id, role = pair[1] }
+  }
+  promote_grants = {
+    for role in local.apply_roles :
+    "prod-${role}" => { project = local.all_projects["prod"].project_id, role = role }
+  }
+}
+
+resource "google_project_iam_member" "github_plan" {
+  for_each = local.plan_grants
+
+  project = each.value.project
+  role    = each.value.role
+  member  = "serviceAccount:${google_service_account.github_plan.email}"
+}
+
+resource "google_project_iam_member" "github_deploy" {
+  for_each = local.deploy_grants
+
+  project = each.value.project
+  role    = each.value.role
+  member  = "serviceAccount:${google_service_account.github_deploy.email}"
+}
+
+resource "google_project_iam_member" "github_promote" {
+  for_each = local.promote_grants
+
+  project = each.value.project
+  role    = each.value.role
+  member  = "serviceAccount:${google_service_account.github_promote.email}"
+}
+
+# The promote identity can write prod's Terraform state bucket, which is in the root project.
+resource "google_storage_bucket_iam_member" "github_promote_prod_state" {
+  bucket = google_storage_bucket.gcp_project_terraform_states["prod"].name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.github_promote.email}"
 }
 
 resource "google_iam_workload_identity_pool" "github_pool" {
@@ -48,12 +116,13 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
   display_name                       = "GitHub Provider"
 
   attribute_mapping = {
-    "google.subject"       = "assertion.sub"
-    "attribute.repository" = "assertion.repository"
-    "attribute.actor"      = "assertion.actor"
+    "google.subject"             = "assertion.sub"
+    "attribute.repository"       = "assertion.repository"
+    "attribute.actor"            = "assertion.actor"
+    "attribute.job_workflow_ref" = "assertion.job_workflow_ref"
   }
 
-  # Restricts to OIDC tokens asserting this exact repository.
+  # Admits only OIDC tokens asserting this repository.
   attribute_condition = "assertion.repository == '${var.github_repository_owner}/${var.github_repository_name}'"
 
   oidc {
@@ -61,25 +130,53 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
   }
 }
 
-resource "google_service_account_iam_member" "github_actions_wic" {
-  service_account_id = google_service_account.github_actions.name
+# Plan: any run in this repository.
+resource "google_service_account_iam_member" "github_plan_wif" {
+  service_account_id = google_service_account.github_plan.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/${var.github_repository_owner}/${var.github_repository_name}"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/${local.repository}"
 }
 
-# Wired into Actions repository variables so workflows never hardcode them. Their presence is also
-# what turns on every deploy job: until this root's first apply writes them, the workflows run only
-# the PR checks (see the `changed` jobs).
+# Deploy, promote and Renovate: only the named workflow files as they exist on main.
+resource "google_service_account_iam_member" "github_renovate_wif" {
+  service_account_id = google_service_account.github_renovate.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.job_workflow_ref/${local.repository}/.github/workflows/renovate.yaml@refs/heads/main"
+}
+
+resource "google_service_account_iam_member" "github_deploy_wif" {
+  for_each = toset(["push-commit.yaml", "push-release.yaml"])
+
+  service_account_id = google_service_account.github_deploy.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.job_workflow_ref/${local.repository}/.github/workflows/${each.key}@refs/heads/main"
+}
+
+resource "google_service_account_iam_member" "github_promote_wif" {
+  for_each = toset(["promote-release.yaml", "apply-infrastructure-prod.yaml"])
+
+  service_account_id = google_service_account.github_promote.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.job_workflow_ref/${local.repository}/.github/workflows/${each.key}@refs/heads/main"
+}
+
+# Actions repository variables. Their presence enables the infrastructure jobs; until the root apply
+# writes them, workflows run only the PR checks (see the `changed` jobs).
 locals {
   actions_variables = {
     WORKLOAD_IDENTITY_PROVIDER = google_iam_workload_identity_pool_provider.github_provider.name
-    SERVICE_ACCOUNT            = google_service_account.github_actions.email
-    GCP_ROOT_PROJECT           = var.gcp_provider_project_id
-    GCP_PROJECT_PREFIX         = var.gcp_project_prefix
-    GCP_REGION                 = var.gcp_provider_region
-    SITE_NAME                  = var.site_name
-    STAGING_URL                = "https://${lookup(var.frontend_hostnames, "stag", cloudflare_pages_project.frontend["stag"].subdomain)}"
-    PRODUCTION_URL             = "https://${lookup(var.frontend_hostnames, "prod", cloudflare_pages_project.frontend["prod"].subdomain)}"
+    PLAN_SERVICE_ACCOUNT       = google_service_account.github_plan.email
+    DEPLOY_SERVICE_ACCOUNT     = google_service_account.github_deploy.email
+    PROMOTE_SERVICE_ACCOUNT    = google_service_account.github_promote.email
+    RENOVATE_SERVICE_ACCOUNT   = google_service_account.github_renovate.email
+    # Not a secret: it appears in the Cloudflare dashboard's URLs. frontend-deploy passes it to wrangler.
+    CLOUDFLARE_ACCOUNT_ID = var.cloudflare_account_id
+    GCP_ROOT_PROJECT      = var.gcp_provider_project_id
+    GCP_PROJECT_PREFIX    = var.gcp_project_prefix
+    GCP_REGION            = var.gcp_provider_region
+    SITE_NAME             = var.site_name
+    STAGING_URL           = "https://${local.frontend_hosts["stag"]}"
+    PRODUCTION_URL        = "https://${local.frontend_hosts["prod"]}"
   }
 }
 

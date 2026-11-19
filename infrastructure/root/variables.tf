@@ -1,5 +1,5 @@
 variable "gcp_provider_project_id" {
-  description = "The id of the root GCP project, created by hand before the first apply (docs/new-repo.md)"
+  description = "The id of the root GCP project, created by hand before the first apply (infrastructure/AGENTS.md)"
   type        = string
 }
 
@@ -43,12 +43,12 @@ variable "github_repository_name" {
 }
 
 variable "cloudflare_account_id" {
-  description = "The id of the Cloudflare account"
+  description = "The id of the Cloudflare account. Not a secret (it is in the dashboard's URLs), so it is set in terraform.tfvars and written to the CLOUDFLARE_ACCOUNT_ID Actions variable."
   type        = string
 }
 
 variable "cloudflare_api_token" {
-  description = "API token granting CI/CD access to the Cloudflare account. Passed by hand at bootstrap only; CI sources it from Secret Manager after (see gcp_secret.tf)."
+  description = "API token granting CI/CD access to the Cloudflare account. Passed by hand at bootstrap only; deploy and promote source it from Secret Manager after (see gcp_secret.tf)."
   type        = string
   sensitive   = true
 }
@@ -59,13 +59,13 @@ variable "site_name" {
 }
 
 variable "cloudflare_zone" {
-  description = "The Cloudflare zone (domain) the frontend hostnames live in, e.g. example.com. Empty when there is no domain: the frontends are then served only at their pages.dev subdomains."
+  description = "The Cloudflare zone (domain) the frontend hostnames live in, e.g. example.com. Empty when there is no domain: the frontends are then served only at their workers.dev addresses."
   type        = string
   default     = ""
 }
 
 variable "frontend_hostnames" {
-  description = "Full hostname of each environment's frontend, inside cloudflare_zone, e.g. { stag = \"staging.example.com\", prod = \"example.com\" }. An environment left out is served at its pages.dev subdomain."
+  description = "Full hostname of each environment's frontend, inside cloudflare_zone, e.g. { stag = \"staging.example.com\", prod = \"example.com\" }. An environment left out is served at its workers.dev address."
   type        = map(string)
   default     = {}
 }
