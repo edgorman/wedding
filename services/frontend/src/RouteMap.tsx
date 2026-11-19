@@ -48,8 +48,6 @@ const drawing = (
 
 // Where the map is centred to begin with, in map units: the middle of the route.
 const START = { x: 300, y: 450 }
-// The red route's extent in map units (left, top, right, bottom): while it is all in view you are 'on route'.
-const ROUTE = [150, 125, 450, 705]
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 const KEY_STEP = 80 // pixels moved by an arrow key
 const ZOOM_STEP = 0.75 // each press of the zoom buttons; 1 is the view you start on, and you can only zoom out from it
@@ -107,11 +105,14 @@ export function RouteMap() {
     centre.current = { x: MAP_X + (win.clientWidth / 2 - tx) / s, y: MAP_Y + (win.clientHeight / 2 - ty) / s }
     canvas.style.transition = glide && !reduceMotion() ? 'transform .35s cubic-bezier(.2, .7, .2, 1)' : 'none'
     canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${zoom.current})`
-    // The recentre button is only needed once the route has slipped (even partly) out of the window.
-    const halfW = win.clientWidth / 2 / s
-    const halfH = win.clientHeight / 2 / s
+    // The recentre button appears as soon as the view has moved (or zoomed) from where it started.
+    const s1 = canvas.offsetHeight / MAP_H
+    const home = {
+      x: MAP_X + (win.clientWidth / 2 - fit(win.clientWidth / 2 - (START.x - MAP_X) * s1, win.clientWidth, canvas.offsetWidth)) / s1,
+      y: MAP_Y + (win.clientHeight / 2 - fit(win.clientHeight / 2 - (START.y - MAP_Y) * s1, win.clientHeight, canvas.offsetHeight)) / s1,
+    }
     const c = centre.current
-    setAway(!(c.x - halfW <= ROUTE[0] && c.x + halfW >= ROUTE[2] && c.y - halfH <= ROUTE[1] && c.y + halfH >= ROUTE[3]))
+    setAway(zoom.current < 1 || Math.hypot(c.x - home.x, c.y - home.y) * s > 2)
   }
 
   // Keep the view in place when the window changes size (resizing, full screen).

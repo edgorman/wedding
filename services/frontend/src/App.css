@@ -60,7 +60,7 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .where { margin: .2rem 0 0; color: var(--soft); font-style: italic; font-size: 1.05rem; line-height: 1.25; }
 .pic img { width: 76px; height: 76px; display: block; }
 
-/* Map: a big drawing (about 7.8 x 3.7 miles, out to Guildford) seen through a window you can drag around.
+/* Map: a big drawing (about 11.7 x 4.6 miles, from Guildford to Dorking) seen through a window you can drag around.
    --u is the pixel height of 900 map units and --z the zoom (1 to start with, smaller zooms out), so at --z 1
    the window shows 600 x 900 units on a phone and, from 561px up, a window 80% of the screen wide shows the
    middle 1800 x 900. Full screen makes the window the whole screen. */
@@ -73,7 +73,7 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .mapwindow { position: absolute; inset: 0; overflow: hidden; clip-path: inset(4px round 5px); touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 .mapwindow:active { cursor: grabbing; }
 .full .mapwindow { clip-path: none; touch-action: none; }
-.mapcanvas { position: absolute; top: 0; left: 0; width: calc(var(--u) * 49 / 9); height: calc(var(--u) * 116 / 45); transform-origin: 0 0; will-change: transform; }
+.mapcanvas { position: absolute; top: 0; left: 0; width: calc(var(--u) * 74 / 9); height: calc(var(--u) * 29 / 9); transform-origin: 0 0; will-change: transform; }
 .mapcanvas img { -webkit-user-drag: none; }
 .base { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* The small drawn map icons sit over the base map. */
