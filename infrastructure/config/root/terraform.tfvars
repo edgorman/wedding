@@ -8,7 +8,7 @@ github_repository_owner = "edgorman"
 github_repository_name  = "wedding"
 
 # Cloudflare dashboard > Workers & Pages, in the sidebar or the URL. Not a secret.
-cloudflare_account_id = "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID"
+cloudflare_account_id = "3d8161599481144eae472c57c1d976f5"
 
 site_name = "Ed and Katie's Wedding"
 # Custom domain, served by the Cloudflare Workers. The zone must exist in the Cloudflare account.
