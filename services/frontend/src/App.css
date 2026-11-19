@@ -64,12 +64,15 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 /* Map: a big drawing (about 11.7 x 4.6 miles, from Guildford to Dorking) seen through a window you can drag around.
    --u is the pixel height of 900 map units and --z the zoom (1 to start with, smaller zooms out), so at --z 1
    the window shows 600 x 900 units on a phone and, from 561px up, a window 80% of the screen wide shows the
-   middle 1800 x 900. Full screen makes the window the whole screen. */
+   middle 1800 x 900. Full screen makes the window the whole screen. --u is capped (700px, 640px full screen) so the layer the browser has to
+   draw stays a manageable size: at 900px it was about 7400 x 2900 CSS pixels and phones ran out of memory for it. */
 .mapwrap { --u: 450px; --z: 1; position: relative; width: 300px; height: var(--u); margin: 0 auto 1rem; }
 @media (min-width: 561px) {
-  .mapwrap { --w: min(80vw, 2000px); --u: max(450px, var(--w) / 2); width: var(--w); margin-inline: calc(50% - var(--w) / 2); }
+  .mapwrap { --w: min(80vw, 2000px); --u: min(700px, max(450px, var(--w) / 2)); width: var(--w); margin-inline: calc(50% - var(--w) / 2); }
 }
-.mapwrap.full { --u: max(450px, 100vh); --u: max(450px, 100dvh); position: fixed; inset: 0; z-index: 60; width: auto; height: auto; margin: 0; background: var(--paper) var(--paper-img, none); }
+/* If the browser ever fails to draw part of the map, show paper rather than the default black. */
+.mapwrap::backdrop { background: var(--paper); }
+.mapwrap.full { --u: max(450px, min(100vh, 100vw / 2, 640px)); --u: max(450px, min(100dvh, 100vw / 2, 640px)); position: fixed; inset: 0; z-index: 60; width: auto; height: auto; margin: 0; background: var(--paper) var(--paper-img, none); }
 /* Sideways drags move the map; up and down still scroll the page, until the map is full screen. */
 .mapwindow { position: absolute; inset: 0; overflow: hidden; clip-path: inset(4px round 5px); touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 .mapwindow:active { cursor: grabbing; }
