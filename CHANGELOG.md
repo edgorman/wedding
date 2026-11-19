@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/edgorman/wedding/compare/v1.1.0...v1.2.0) (2026-11-19)
+
+
+### Features
+
+* **frontend:** draggable, zoomable map out to Guildford with full screen ([#38](https://github.com/edgorman/wedding/issues/38)) ([175e37d](https://github.com/edgorman/wedding/commit/175e37d48b2c16f47a04030c3ac1de643ede1515))
+
 ## [1.1.0](https://github.com/edgorman/wedding/compare/v1.0.0...v1.1.0) (2026-11-19)
 
 
