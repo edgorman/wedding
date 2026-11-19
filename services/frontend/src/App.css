@@ -60,10 +60,11 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .where { margin: .2rem 0 0; color: var(--soft); font-style: italic; font-size: 1.05rem; line-height: 1.25; }
 .pic img { width: 76px; height: 76px; display: block; }
 
-/* Map: a big drawing (about 3.8 x 2.8 miles) seen through a window you can drag around. --u is the pixel
-   height of 900 map units, so the window shows 600 x 900 units on a phone and, from 561px up, a window
-   80% of the screen wide shows the middle 1800 x 900. Full screen makes the window the whole screen. */
-.mapwrap { --u: 450px; position: relative; width: 300px; height: var(--u); margin: 0 auto 1rem; }
+/* Map: a big drawing (about 7.8 x 3.7 miles, out to Guildford) seen through a window you can drag around.
+   --u is the pixel height of 900 map units and --z the zoom (1 to start with, smaller zooms out), so at --z 1
+   the window shows 600 x 900 units on a phone and, from 561px up, a window 80% of the screen wide shows the
+   middle 1800 x 900. Full screen makes the window the whole screen. */
+.mapwrap { --u: 450px; --z: 1; position: relative; width: 300px; height: var(--u); margin: 0 auto 1rem; }
 @media (min-width: 561px) {
   .mapwrap { --w: min(80vw, 2000px); --u: max(450px, var(--w) / 2); width: var(--w); margin-inline: calc(50% - var(--w) / 2); }
 }
@@ -72,7 +73,7 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .mapwindow { position: absolute; inset: 0; overflow: hidden; clip-path: inset(4px round 5px); touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 .mapwindow:active { cursor: grabbing; }
 .full .mapwindow { clip-path: none; touch-action: none; }
-.mapcanvas { position: absolute; top: 0; left: 0; width: calc(var(--u) * 8 / 3); height: calc(var(--u) * 2); will-change: transform; }
+.mapcanvas { position: absolute; top: 0; left: 0; width: calc(var(--u) * var(--z) * 49 / 9); height: calc(var(--u) * var(--z) * 116 / 45); will-change: transform; }
 .mapcanvas img { -webkit-user-drag: none; }
 .base { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* The small drawn map icons sit over the base map. */
@@ -87,13 +88,18 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 /* Share (top right) and full screen (bottom right). */
 .mapbtn { position: absolute; right: 14px; z-index: 3; width: 2.5rem; height: 2.5rem; padding: 0; border: 1.5px solid var(--accent); border-radius: 50%; background: #f4f2ed; color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(59,58,54,.15); }
 .mapbtn svg { width: 1.25rem; height: 1.25rem; }
-.mapbtn:hover, .mapbtn:focus-visible { background: #fff; }
+.mapbtn:hover:not(:disabled), .mapbtn:focus-visible { background: #fff; }
 .mapbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .mapbtn.share { top: 14px; }
 .mapbtn.fs { bottom: 14px; }
-.full .mapbtn { right: max(14px, env(safe-area-inset-right, 0px)); }
+.mapbtn.zout { left: 14px; right: auto; bottom: 14px; }
+.mapbtn.zin { left: 14px; right: auto; bottom: calc(14px + 2.5rem + 8px); }
+.mapbtn:disabled { opacity: .45; cursor: default; background: #f4f2ed; }
+.full .mapbtn.share, .full .mapbtn.fs { right: max(14px, env(safe-area-inset-right, 0px)); }
+.full .mapbtn.zin, .full .mapbtn.zout { left: max(14px, env(safe-area-inset-left, 0px)); }
 .full .mapbtn.share { top: max(14px, env(safe-area-inset-top, 0px)); }
-.full .mapbtn.fs { bottom: max(14px, env(safe-area-inset-bottom, 0px)); }
+.full .mapbtn.fs, .full .mapbtn.zout { bottom: max(14px, env(safe-area-inset-bottom, 0px)); }
+.full .mapbtn.zin { bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 2.5rem + 8px); }
 /* A slight jingle when you point at one of the map's tap targets. */
 .lm { transform-origin: 50% 100%; }
 @keyframes jingle { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(-7deg); } 30% { transform: rotate(6deg); } 45% { transform: rotate(-4deg); } 60% { transform: rotate(3deg); } 75% { transform: rotate(-1.5deg); } }
