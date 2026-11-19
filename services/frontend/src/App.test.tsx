@@ -136,3 +136,13 @@ test('the scroll chevron scrolls down and hides at the bottom of the page', () =
   expect(screen.queryByRole('button', { name: 'Scroll down' })).not.toBeInTheDocument()
   height.mockRestore()
 })
+
+test('nearby places open a panel that links to Google Maps', () => {
+  render(<App />)
+  for (const name of ['Gomshall station', 'Hurtwood Hotel', 'Wotton House', "The King's Head", 'Premier Inn Guildford North', 'Supreme Taxis', 'A3 Cars and Guildford Taxis']) {
+    fireEvent.click(screen.getByRole('button', { name: `About ${name}` }))
+    const panel = screen.getByRole('dialog', { name })
+    expect(panel.querySelector('a')).toHaveAttribute('href', expect.stringMatching(/google\.com\/maps|maps\.app\.goo\.gl/))
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+  }
+})

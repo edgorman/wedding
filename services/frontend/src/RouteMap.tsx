@@ -9,7 +9,7 @@ import {
   type PointerEvent,
 } from 'react'
 import { art } from './artwork'
-import { spots } from './mapInfo'
+import { spots, type Spot } from './mapInfo'
 import { houses, landmarks, MAP_H, MAP_W, MAP_X, MAP_Y, route, trees, type Box } from './mapLayout'
 
 type SpotKey = keyof typeof spots
@@ -42,6 +42,9 @@ const drawing = (
       {(['church', 'venue', 'bus'] as const).map((k) => (
         <img key={k} className={`lm lm-${k}`} src={art(`map/${k}`)} alt="" style={place(landmarks[k])} />
       ))}
+      {(Object.entries(spots) as [string, Spot][]).map(
+        ([k, p]) => p.icon && <img key={k} className="lm place" src={art(`map/${p.icon}`)} alt="" style={place(p.box)} />,
+      )}
     </span>
   </>
 )
@@ -280,7 +283,7 @@ export function RouteMap() {
     show(true)
   }
 
-  const spot = open ? spots[open] : null
+  const spot: Spot | null = open ? spots[open] : null
 
   return (
     <div className={full ? 'mapwrap full' : 'mapwrap'} ref={wrapRef}>
@@ -310,8 +313,8 @@ export function RouteMap() {
               ref={(el) => {
                 btnRefs.current[k] = el
               }}
-              style={place(spots[k].box)}
-              aria-label={spots[k].label}
+              style={place((spots[k] as Spot).box)}
+              aria-label={(spots[k] as Spot).label}
               aria-expanded={open === k}
               onClick={(e) => {
                 e.stopPropagation()
