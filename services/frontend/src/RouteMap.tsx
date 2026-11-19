@@ -13,7 +13,7 @@ const place = ([l, t, w, h]: Box): CSSProperties => ({
   height: `${(h / MAP_H) * 100}%`,
 })
 
-// The map drawing never changes, so its ~830 images are built once here, outside the component.
+// The map drawing never changes, so its ~1,200 images are built once here, outside the component.
 // React then skips the whole layer when an info panel opens or closes.
 const drawing = (
   <>
