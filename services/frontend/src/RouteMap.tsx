@@ -48,6 +48,9 @@ const drawing = (
 
 // Where the map is centred to begin with, in map units: the middle of the route.
 const START = { x: 300, y: 450 }
+// The red route's extent in map units (left, top, right, bottom): while it is all in view you are 'on route'.
+const ROUTE = [150, 125, 450, 705]
+const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 const KEY_STEP = 80 // pixels moved by an arrow key
 const ZOOM_STEP = 0.75 // each press of the zoom buttons; 1 is the view you start on, and you can only zoom out from it
 
@@ -57,6 +60,7 @@ export function RouteMap() {
   const [full, setFull] = useState(false)
   const [atMin, setAtMin] = useState(false)
   const [atMax, setAtMax] = useState(true)
+  const [away, setAway] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const winRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -71,17 +75,16 @@ export function RouteMap() {
   const pointers = useRef(new Map<number, { x: number; y: number }>())
   const pinch = useRef<{ dist: number; zoom: number } | null>(null)
 
-  // Pixels per map unit: the canvas is drawn --u x --z x 2.58 tall (see App.css).
-  const scale = () => (canvasRef.current?.offsetHeight ?? 0) / MAP_H
+  // Pixels per map unit. The canvas is laid out once, at --u x 2.58 tall, and zooming scales it with a
+  // transform, which the browser does without redoing the layout of its thousands of icons.
+  const scale = () => ((canvasRef.current?.offsetHeight ?? 0) / MAP_H) * zoom.current
 
   // The furthest out you can go: where the drawing just fills the window.
   const minZoom = () => {
     const win = winRef.current
     const canvas = canvasRef.current
-    if (!win || !canvas || !zoom.current) return 1
-    const w = canvas.offsetWidth / zoom.current
-    const h = canvas.offsetHeight / zoom.current
-    return w && h ? Math.min(1, Math.max(win.clientWidth / w, win.clientHeight / h)) : 1
+    if (!win || !canvas || !canvas.offsetWidth || !canvas.offsetHeight) return 1
+    return Math.min(1, Math.max(win.clientWidth / canvas.offsetWidth, win.clientHeight / canvas.offsetHeight))
   }
   const applyZoom = (z: number) => {
     zoom.current = z
@@ -91,18 +94,24 @@ export function RouteMap() {
   }
 
   // Slide the canvas so `centre` is in the middle of the window, never showing past the drawing's edge.
-  const show = () => {
+  // `glide` eases the move (buttons and keys); dragging and wheel zooming follow the pointer exactly.
+  const show = (glide = false) => {
     const win = winRef.current
     const canvas = canvasRef.current
-    if (!win || !canvas || !scale()) return
+    if (!win || !canvas || !canvas.offsetHeight) return
     if (zoom.current < minZoom()) applyZoom(minZoom())
     const s = scale()
-    if (!s) return
     const fit = (v: number, size: number, canvasSize: number) => Math.min(0, Math.max(size - canvasSize, v))
-    const tx = fit(win.clientWidth / 2 - (centre.current.x - MAP_X) * s, win.clientWidth, canvas.offsetWidth)
-    const ty = fit(win.clientHeight / 2 - (centre.current.y - MAP_Y) * s, win.clientHeight, canvas.offsetHeight)
+    const tx = fit(win.clientWidth / 2 - (centre.current.x - MAP_X) * s, win.clientWidth, canvas.offsetWidth * zoom.current)
+    const ty = fit(win.clientHeight / 2 - (centre.current.y - MAP_Y) * s, win.clientHeight, canvas.offsetHeight * zoom.current)
     centre.current = { x: MAP_X + (win.clientWidth / 2 - tx) / s, y: MAP_Y + (win.clientHeight / 2 - ty) / s }
-    canvas.style.transform = `translate(${tx}px, ${ty}px)`
+    canvas.style.transition = glide && !reduceMotion() ? 'transform .35s cubic-bezier(.2, .7, .2, 1)' : 'none'
+    canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${zoom.current})`
+    // The recentre button is only needed once the route has slipped (even partly) out of the window.
+    const halfW = win.clientWidth / 2 / s
+    const halfH = win.clientHeight / 2 / s
+    const c = centre.current
+    setAway(!(c.x - halfW <= ROUTE[0] && c.x + halfW >= ROUTE[2] && c.y - halfH <= ROUTE[1] && c.y + halfH >= ROUTE[3]))
   }
 
   // Keep the view in place when the window changes size (resizing, full screen).
@@ -110,7 +119,7 @@ export function RouteMap() {
     show()
     const win = winRef.current
     if (!win || typeof ResizeObserver === 'undefined') return
-    const watcher = new ResizeObserver(show)
+    const watcher = new ResizeObserver(() => show())
     watcher.observe(win)
     return () => watcher.disconnect()
   }, [])
@@ -133,7 +142,7 @@ export function RouteMap() {
     )
     let top = r.bottom - c.top + 10
     if (top + pop.offsetHeight > w.bottom - c.top) top = Math.max(w.top - c.top + 8, r.top - c.top - pop.offsetHeight - 10)
-    setPopPos({ left, top })
+    setPopPos({ left: left / zoom.current, top: top / zoom.current })
   }, [open])
 
   useEffect(() => {
@@ -167,7 +176,7 @@ export function RouteMap() {
   }, [full])
 
   // Change the zoom, keeping the map unit under (fx, fy) in the window where it is. Defaults to the middle.
-  const zoomTo = (z: number, fx?: number, fy?: number) => {
+  const zoomTo = (z: number, fx?: number, fy?: number, glide = false) => {
     const win = winRef.current
     const s0 = scale()
     if (!win || !s0) return
@@ -180,7 +189,7 @@ export function RouteMap() {
     const s1 = scale()
     centre.current = { x: x - dx / s1, y: y - dy / s1 }
     setOpen(null)
-    show()
+    show(glide)
   }
 
   // Back to the view the page starts on.
@@ -188,7 +197,7 @@ export function RouteMap() {
     setOpen(null)
     applyZoom(1)
     centre.current = START
-    show()
+    show(true)
   }
 
   // Pinching a trackpad (or ctrl + wheel) zooms; in full screen the plain wheel does too, since nothing scrolls there.
@@ -213,6 +222,7 @@ export function RouteMap() {
   const onPointerDown = (e: PointerEvent) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
     dragged.current = false
+    if (canvasRef.current) canvasRef.current.style.transition = 'none'
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     if (pointers.current.size === 2) {
       // A second finger turns the drag into a pinch.
@@ -259,14 +269,14 @@ export function RouteMap() {
   const onKeyDown = (e: KeyboardEvent) => {
     const s = scale()
     if (e.target === e.currentTarget && (e.key === '+' || e.key === '=' || e.key === '-')) {
-      zoomTo(zoom.current * (e.key === '-' ? ZOOM_STEP : 1 / ZOOM_STEP))
+      zoomTo(zoom.current * (e.key === '-' ? ZOOM_STEP : 1 / ZOOM_STEP), undefined, undefined, true)
       return
     }
     const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]
     if (e.target !== e.currentTarget || !step || !s) return
     e.preventDefault()
     centre.current = { x: centre.current.x + (step[0] * KEY_STEP) / s, y: centre.current.y + (step[1] * KEY_STEP) / s }
-    show()
+    show(true)
   }
 
   const spot = open ? spots[open] : null
@@ -336,18 +346,24 @@ export function RouteMap() {
       <svg className="mapframe" aria-hidden="true">
         <rect width="100%" height="100%" rx="5" />
       </svg>
-      <button type="button" className="mapbtn share" aria-label="Back to the starting view" onClick={recentre}>
+      <button
+        type="button"
+        className={away ? 'mapbtn share away' : 'mapbtn share'}
+        aria-label="Back to the route"
+        aria-hidden={!away}
+        tabIndex={away ? 0 : -1}
+        onClick={recentre}
+      >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="3.5" />
-          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+          <path d="M3 11l19-9-9 19-2-8-8-2z" />
         </svg>
       </button>
-      <button type="button" className="mapbtn zin" aria-label="Zoom in" disabled={atMax} onClick={() => zoomTo(zoom.current / ZOOM_STEP)}>
+      <button type="button" className="mapbtn zin" aria-label="Zoom in" disabled={atMax} onClick={() => zoomTo(zoom.current / ZOOM_STEP, undefined, undefined, true)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M5 12h14M12 5v14" />
         </svg>
       </button>
-      <button type="button" className="mapbtn zout" aria-label="Zoom out" disabled={atMin} onClick={() => zoomTo(zoom.current * ZOOM_STEP)}>
+      <button type="button" className="mapbtn zout" aria-label="Zoom out" disabled={atMin} onClick={() => zoomTo(zoom.current * ZOOM_STEP, undefined, undefined, true)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="M5 12h14" />
         </svg>

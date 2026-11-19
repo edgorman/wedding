@@ -73,7 +73,7 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .mapwindow { position: absolute; inset: 0; overflow: hidden; clip-path: inset(4px round 5px); touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 .mapwindow:active { cursor: grabbing; }
 .full .mapwindow { clip-path: none; touch-action: none; }
-.mapcanvas { position: absolute; top: 0; left: 0; width: calc(var(--u) * var(--z) * 49 / 9); height: calc(var(--u) * var(--z) * 116 / 45); will-change: transform; }
+.mapcanvas { position: absolute; top: 0; left: 0; width: calc(var(--u) * 49 / 9); height: calc(var(--u) * 116 / 45); transform-origin: 0 0; will-change: transform; }
 .mapcanvas img { -webkit-user-drag: none; }
 .base { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* The small drawn map icons sit over the base map. */
@@ -86,14 +86,17 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .mapframe rect { fill: none; stroke: var(--ink); stroke-width: .8; stroke-dasharray: .5 4; stroke-linecap: round; opacity: .7; }
 .full .mapframe { display: none; }
 /* Share (top right) and full screen (bottom right). */
-.mapbtn { position: absolute; right: 14px; z-index: 3; width: 2.5rem; height: 2.5rem; padding: 0; border: 1.5px solid var(--accent); border-radius: 50%; background: #f4f2ed; color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(59,58,54,.15); }
+.mapbtn { transition: opacity .25s ease, transform .25s ease, visibility .25s, background-color .15s, box-shadow .15s; position: absolute; right: 14px; z-index: 3; width: 2.5rem; height: 2.5rem; padding: 0; border: 1.5px solid var(--accent); border-radius: 50%; background: #f4f2ed; color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(59,58,54,.15); }
 .mapbtn svg { width: 1.25rem; height: 1.25rem; }
 .mapbtn:hover:not(:disabled), .mapbtn:focus-visible { background: #fff; }
 .mapbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.mapbtn.share { top: 14px; }
+.mapbtn.share { top: 14px; opacity: 0; visibility: hidden; transform: scale(.6); }
+.mapbtn.share.away { opacity: 1; visibility: visible; transform: none; }
 .mapbtn.fs { bottom: 14px; }
 .mapbtn.zout { left: 14px; right: auto; bottom: 14px; }
 .mapbtn.zin { left: 14px; right: auto; bottom: calc(14px + 2.5rem + 8px); }
+.mapbtn:not(.share):hover:not(:disabled), .mapbtn.share.away:hover { transform: scale(1.08); }
+.mapbtn:not(.share):active:not(:disabled), .mapbtn.share.away:active { transform: scale(.94); }
 .mapbtn:disabled { opacity: .45; cursor: default; background: #f4f2ed; }
 .full .mapbtn.share, .full .mapbtn.fs { right: max(14px, env(safe-area-inset-right, 0px)); }
 .full .mapbtn.zin, .full .mapbtn.zout { left: max(14px, env(safe-area-inset-left, 0px)); }
@@ -108,10 +111,12 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
   .mapcanvas:has([data-spot="bus"]:is(:hover, :focus-visible)) .lm-bus,
   .mapcanvas:has([data-spot="venue"]:is(:hover, :focus-visible)) .lm-venue { animation: jingle .6s ease-in-out; }
 }
-.hot { position: absolute; padding: 0; border: 1.5px dashed transparent; border-radius: 10px; background: transparent; cursor: pointer; z-index: 2; }
+.hot { transition: border-color .15s, background-color .15s; position: absolute; padding: 0; border: 1.5px dashed transparent; border-radius: 10px; background: transparent; cursor: pointer; z-index: 2; }
 .hot:hover, .hot:focus-visible, .hot[aria-expanded="true"] { border-color: var(--accent); background: rgba(138,106,79,.08); outline: none; }
 .hot i { position: absolute; top: -9px; right: -9px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--accent); background: #f4f2ed; color: var(--accent); font: italic 600 .8rem/15px var(--display); text-align: center; }
-.pop { position: absolute; z-index: 5; width: 270px; max-width: calc(100vw - 48px); box-sizing: border-box; padding: 1rem 1.1rem 1rem; border: 1.5px solid var(--ink); border-radius: 8px; background: #f8f6f1; box-shadow: 0 6px 18px rgba(59,58,54,.22); font-size: 1.05rem; line-height: 1.35; }
+@keyframes popin { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+/* The panel sits on the zoomed canvas, so it is scaled back up to stay a steady size. */
+.pop { scale: calc(1 / var(--z)); transform-origin: 0 0; animation: popin .2s ease-out; position: absolute; z-index: 5; width: 270px; max-width: calc(100vw - 48px); box-sizing: border-box; padding: 1rem 1.1rem 1rem; border: 1.5px solid var(--ink); border-radius: 8px; background: #f8f6f1; box-shadow: 0 6px 18px rgba(59,58,54,.22); font-size: 1.05rem; line-height: 1.35; }
 .pop h3 { margin: 0 1.6rem .35rem 0; font-weight: 500; font-size: 1.25rem; color: var(--accent); line-height: 1.15; }
 .pop p { margin: .3rem 0; }
 .pop a { display: inline-block; margin-top: .4rem; color: var(--accent); font-style: italic; text-decoration: none; }
@@ -121,8 +126,11 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .pop-x:hover, .pop-x:focus-visible { background: rgba(138,106,79,.18); outline: none; }
 .maptext { text-align: center; margin: 1rem 0 0; }
 .cta { display: inline-block; padding: .5rem 1.4rem; border: 1.5px solid var(--accent); border-radius: 999px; background: #f4f2ed; color: var(--accent); font-size: 1.15rem; letter-spacing: .06em; text-decoration: none; box-shadow: 0 2px 8px rgba(59,58,54,.12); }
+.cta { transition: background-color .2s, color .2s, transform .2s; }
+.cta:hover { transform: translateY(-1px); }
 .cta:hover, .cta:focus-visible { background: var(--accent); color: #f8f6f1; outline: none; }
 .cta:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .mapbtn, .hot, .cta { transition: none; } .pop { animation: none; } }
 .dance { display: block; width: 11rem; max-width: 60%; height: auto; margin: 1.5rem auto 4.5rem; }
 .closing { text-align: center; margin: 0; padding-block: 3.5rem .5rem; color: var(--accent); font-size: 1.5rem; font-style: italic; letter-spacing: .06em; }
 

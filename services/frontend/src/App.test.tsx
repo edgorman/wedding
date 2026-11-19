@@ -45,34 +45,35 @@ test('the map is not a link; full screen toggles and the directions link stays b
 
 test('dragging pans, zooming only goes out, and the clicks that end a drag open nothing', () => {
   // jsdom has no layout: give the window 300 x 450 and the canvas 2450 x 1160 at zoom 1 (half a pixel per
-  // map unit), scaled by the zoom the page sets.
-  const zoomOf = (el: HTMLElement) => parseFloat((el.closest('.mapwrap') as HTMLElement).style.getPropertyValue('--z') || '1')
+  // map unit); zooming scales it with a transform.
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(300)
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(450)
-  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
-    return 2450 * zoomOf(this)
-  })
-  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
-    return 1160 * zoomOf(this)
-  })
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(2450)
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(1160)
   render(<App />)
   const canvas = document.querySelector('.mapcanvas') as HTMLElement
   const win = document.querySelector('.mapwindow') as HTMLElement
-  expect(canvas.style.transform).toBe('translate(-1700px, -500px)')
+  expect(canvas.style.transform).toBe('translate(-1700px, -500px) scale(1)')
   const pointer = (type: string, clientX: number) => fireEvent(win, new MouseEvent(type, { bubbles: true, clientX, clientY: 100 }))
   pointer('pointerdown', 200)
   pointer('pointermove', 100)
   pointer('pointerup', 100)
-  expect(canvas.style.transform).toBe('translate(-1800px, -500px)')
+  expect(canvas.style.transform).toBe('translate(-1800px, -500px) scale(1)')
+  expect(screen.getByRole('button', { name: 'Back to the route' })).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'About the guest bus' }))
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'About the guest bus' }))
   expect(screen.getByRole('dialog', { name: 'The guest bus' })).toBeInTheDocument()
   // The arrow keys move it too, and it stops at the edge of the drawing.
   fireEvent.keyDown(win, { key: 'ArrowRight' })
-  expect(canvas.style.transform).toBe('translate(-1880px, -500px)')
+  expect(canvas.style.transform).toBe('translate(-1880px, -500px) scale(1)')
   for (let i = 0; i < 30; i++) fireEvent.keyDown(win, { key: 'ArrowRight' })
-  expect(canvas.style.transform).toBe('translate(-2150px, -500px)')
+  expect(canvas.style.transform).toBe('translate(-2150px, -500px) scale(1)')
+
+  // The button back to the route only shows once you have moved away from it.
+  fireEvent.click(screen.getByRole('button', { name: 'Back to the route' }))
+  expect(canvas.style.transform).toBe('translate(-1700px, -500px) scale(1)')
+  expect(screen.queryByRole('button', { name: 'Back to the route' })).not.toBeInTheDocument()
 
   // Zooming: you start fully in, so zoom in is off; zoom out stops where the drawing fills the window.
   const wrap = document.querySelector('.mapwrap') as HTMLElement
@@ -88,10 +89,10 @@ test('dragging pans, zooming only goes out, and the clicks that end a drag open 
   fireEvent.keyDown(win, { key: '=' })
   expect(parseFloat(wrap.style.getPropertyValue('--z'))).toBeGreaterThan(450 / 1160)
 
-  // The button in the corner goes back to the starting view.
-  fireEvent.click(screen.getByRole('button', { name: 'Back to the starting view' }))
+  // The recentre button also undoes any zoom.
+  fireEvent.click(document.querySelector('.mapbtn.share') as HTMLElement)
   expect(wrap.style.getPropertyValue('--z')).toBe('1')
-  expect(canvas.style.transform).toBe('translate(-1700px, -500px)')
+  expect(canvas.style.transform).toBe('translate(-1700px, -500px) scale(1)')
   vi.restoreAllMocks()
 })
 
