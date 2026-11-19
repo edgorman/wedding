@@ -33,10 +33,11 @@ The page shows part of the canvas through a window you can drag around. It start
 | `map/church.svg` | St James' Church (tap for info). | 94 x 106 |
 | `map/bus.svg` | The guest bus (tap for info). | 95 x 77 |
 | `map/venue.svg` | Burrows Lea Country House (tap for info). | 134 x 80 |
+| `map/station.svg`, `map/hotel.svg`, `map/taxi.svg` | Simple icons for nearby places (tap for info): Gomshall station, the hotels and the taxi firms. | 56 x 56 (drawn at 76 x 76 units) |
 | `map/house.svg` | One small house, repeated about 900 times at different sizes. | 18 x 20 |
 | `map/tree.svg` | One tree, repeated about 5,400 times at different sizes. | 800 x 888 |
 
-Where each icon sits is listed in [`../mapLayout.ts`](../mapLayout.ts). Move or resize one there if a new drawing needs a different frame. The tap targets for the church, bus and venue are in [`../mapInfo.ts`](../mapInfo.ts).
+Where each icon sits is listed in [`../mapLayout.ts`](../mapLayout.ts). Move or resize one there if a new drawing needs a different frame. The tap targets for the church, bus and venue, and the position and Google Maps link of each nearby place, are in [`../mapInfo.ts`](../mapInfo.ts).
 
 ## Everything else
 
