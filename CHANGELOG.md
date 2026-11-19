@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.0](https://github.com/edgorman/wedding/compare/v1.0.0...v1.1.0) (2026-11-19)
+
+
+### Features
+
+* **frontend:** make the desktop map 80% of the screen width and trim what the page loads ([#22](https://github.com/edgorman/wedding/issues/22)) ([4f660ea](https://github.com/edgorman/wedding/commit/4f660eaf7cb34b8c5a9090f080939e060bb1804e))
+
+
+### Miscellaneous Chores
+
+* **deps:** update ci-deps ([#29](https://github.com/edgorman/wedding/issues/29)) ([7664dce](https://github.com/edgorman/wedding/commit/7664dce51c62eb9a66a20d5caef5d974b2bdd14f))
+* **deps:** update dependency @testing-library/jest-dom to v8 ([#33](https://github.com/edgorman/wedding/issues/33)) ([284ee22](https://github.com/edgorman/wedding/commit/284ee22197007b60e092f4ec945c057fa7d2e1aa))
+* **deps:** update frontend-deps ([#31](https://github.com/edgorman/wedding/issues/31)) ([3e15074](https://github.com/edgorman/wedding/commit/3e15074cd36bdd22a0d27e56dfee961ed2f01656))
+* **deps:** update infrastructure-deps ([#32](https://github.com/edgorman/wedding/issues/32)) ([e676b7f](https://github.com/edgorman/wedding/commit/e676b7fdb9553946d222a3ad5248a9d9cdd61460))
+* **deps:** update node.js to v26 ([#34](https://github.com/edgorman/wedding/issues/34)) ([17637ed](https://github.com/edgorman/wedding/commit/17637edc07e0f2447464e89dc24bbbba48d1c542))
+
 ## [1.0.0](https://github.com/edgorman/wedding/compare/v0.9.0...v1.0.0) (2026-11-19)
 
 
