@@ -60,29 +60,52 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .where { margin: .2rem 0 0; color: var(--soft); font-style: italic; font-size: 1.05rem; line-height: 1.25; }
 .pic img { width: 76px; height: 76px; display: block; }
 
-/* Map: one wide drawing (2:1). The wrap is the visible window: a tall 2:3 slice of the middle on phones.
-   From 561px up it is 80% of the screen width (breaking out of the text column), as tall as the whole
-   drawing needs, and shows all of it once it is at least 900px wide; narrower, it crops the sides. */
-.mapwrap { position: relative; width: 300px; height: 450px; margin: 0 auto 1rem; }
+/* Map: a big drawing (about 3.8 x 2.8 miles) seen through a window you can drag around. --u is the pixel
+   height of 900 map units, so the window shows 600 x 900 units on a phone and, from 561px up, a window
+   80% of the screen wide shows the middle 1800 x 900. Full screen makes the window the whole screen. */
+.mapwrap { --u: 450px; position: relative; width: 300px; height: var(--u); margin: 0 auto 1rem; }
 @media (min-width: 561px) {
-  .mapwrap { --w: min(80vw, 2000px); width: var(--w); height: max(450px, var(--w) / 2); margin-inline: calc(50% - var(--w) / 2); }
+  .mapwrap { --w: min(80vw, 2000px); --u: max(450px, var(--w) / 2); width: var(--w); margin-inline: calc(50% - var(--w) / 2); }
 }
-.mapwindow { position: absolute; inset: 0; overflow: hidden; clip-path: inset(4px round 5px); }
-.mapcanvas { position: absolute; top: 0; left: 50%; height: 100%; aspect-ratio: 2 / 1; transform: translateX(-50%); }
-.map { position: absolute; inset: 0; display: block; text-decoration: none; color: inherit; }
-.map .base { width: 100%; height: 100%; display: block; }
+.mapwrap.full { --u: max(450px, 100vh); --u: max(450px, 100dvh); position: fixed; inset: 0; z-index: 60; width: auto; height: auto; margin: 0; background: var(--paper) var(--paper-img, none); }
+/* Sideways drags move the map; up and down still scroll the page, until the map is full screen. */
+.mapwindow { position: absolute; inset: 0; overflow: hidden; clip-path: inset(4px round 5px); touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+.mapwindow:active { cursor: grabbing; }
+.full .mapwindow { clip-path: none; touch-action: none; }
+.mapcanvas { position: absolute; top: 0; left: 0; width: calc(var(--u) * 8 / 3); height: calc(var(--u) * 2); will-change: transform; }
+.mapcanvas img { -webkit-user-drag: none; }
+.base { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* The small drawn map icons sit over the base map. */
-.map .icons { position: absolute; inset: 0; pointer-events: none; }
-.map .icons img { position: absolute; display: block; }
-.mapwrap:has(.map:focus-visible) { outline: 2px solid var(--accent); outline-offset: 6px; }
-.map:focus-visible { outline: none; }
+.icons { position: absolute; inset: 0; pointer-events: none; }
+.icons img { position: absolute; display: block; }
+.mapwrap:has(.mapwindow:focus-visible) { outline: 2px solid var(--accent); outline-offset: 6px; }
+.mapwindow:focus-visible { outline: none; }
 /* The dotted frame around the visible window. */
 .mapframe { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); overflow: visible; pointer-events: none; }
 .mapframe rect { fill: none; stroke: var(--ink); stroke-width: .8; stroke-dasharray: .5 4; stroke-linecap: round; opacity: .7; }
+.full .mapframe { display: none; }
+/* Share (top right) and full screen (bottom right). */
+.mapbtn { position: absolute; right: 14px; z-index: 3; width: 2.5rem; height: 2.5rem; padding: 0; border: 1.5px solid var(--accent); border-radius: 50%; background: #f4f2ed; color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(59,58,54,.15); }
+.mapbtn svg { width: 1.25rem; height: 1.25rem; }
+.mapbtn:hover, .mapbtn:focus-visible { background: #fff; }
+.mapbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.mapbtn.share { top: 14px; }
+.mapbtn.fs { bottom: 14px; }
+.full .mapbtn { right: max(14px, env(safe-area-inset-right, 0px)); }
+.full .mapbtn.share { top: max(14px, env(safe-area-inset-top, 0px)); }
+.full .mapbtn.fs { bottom: max(14px, env(safe-area-inset-bottom, 0px)); }
+/* A slight jingle when you point at one of the map's tap targets. */
+.lm { transform-origin: 50% 100%; }
+@keyframes jingle { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(-7deg); } 30% { transform: rotate(6deg); } 45% { transform: rotate(-4deg); } 60% { transform: rotate(3deg); } 75% { transform: rotate(-1.5deg); } }
+@media (prefers-reduced-motion: no-preference) {
+  .mapcanvas:has([data-spot="church"]:is(:hover, :focus-visible)) .lm-church,
+  .mapcanvas:has([data-spot="bus"]:is(:hover, :focus-visible)) .lm-bus,
+  .mapcanvas:has([data-spot="venue"]:is(:hover, :focus-visible)) .lm-venue { animation: jingle .6s ease-in-out; }
+}
 .hot { position: absolute; padding: 0; border: 1.5px dashed transparent; border-radius: 10px; background: transparent; cursor: pointer; z-index: 2; }
 .hot:hover, .hot:focus-visible, .hot[aria-expanded="true"] { border-color: var(--accent); background: rgba(138,106,79,.08); outline: none; }
 .hot i { position: absolute; top: -9px; right: -9px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--accent); background: #f4f2ed; color: var(--accent); font: italic 600 .8rem/15px var(--display); text-align: center; }
-.pop { position: absolute; z-index: 5; width: min(270px, calc(100% - 16px)); box-sizing: border-box; padding: 1rem 1.1rem 1rem; border: 1.5px solid var(--ink); border-radius: 8px; background: #f8f6f1; box-shadow: 0 6px 18px rgba(59,58,54,.22); font-size: 1.05rem; line-height: 1.35; }
+.pop { position: absolute; z-index: 5; width: 270px; max-width: calc(100vw - 48px); box-sizing: border-box; padding: 1rem 1.1rem 1rem; border: 1.5px solid var(--ink); border-radius: 8px; background: #f8f6f1; box-shadow: 0 6px 18px rgba(59,58,54,.22); font-size: 1.05rem; line-height: 1.35; }
 .pop h3 { margin: 0 1.6rem .35rem 0; font-weight: 500; font-size: 1.25rem; color: var(--accent); line-height: 1.15; }
 .pop p { margin: .3rem 0; }
 .pop a { display: inline-block; margin-top: .4rem; color: var(--accent); font-style: italic; text-decoration: none; }
@@ -90,9 +113,10 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .pop a:active { text-decoration-color: var(--accent); }
 .pop-x { position: absolute; top: .3rem; right: .4rem; width: 1.8rem; height: 1.8rem; border: 0; border-radius: 50%; background: transparent; color: var(--ink); font-size: 1.4rem; line-height: 1; cursor: pointer; }
 .pop-x:hover, .pop-x:focus-visible { background: rgba(138,106,79,.18); outline: none; }
-.maptext { text-align: center; margin: .5rem 0 0; }
-.cta { font-size: .85rem; font-style: italic; letter-spacing: .08em; color: var(--soft); text-decoration: none; }
-.cta:hover, .cta:focus-visible { color: var(--accent); }
+.maptext { text-align: center; margin: 1rem 0 0; }
+.cta { display: inline-block; padding: .5rem 1.4rem; border: 1.5px solid var(--accent); border-radius: 999px; background: #f4f2ed; color: var(--accent); font-size: 1.15rem; letter-spacing: .06em; text-decoration: none; box-shadow: 0 2px 8px rgba(59,58,54,.12); }
+.cta:hover, .cta:focus-visible { background: var(--accent); color: #f8f6f1; outline: none; }
+.cta:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .dance { display: block; width: 11rem; max-width: 60%; height: auto; margin: 1.5rem auto 4.5rem; }
 .closing { text-align: center; margin: 0; padding-block: 3.5rem .5rem; color: var(--accent); font-size: 1.5rem; font-style: italic; letter-spacing: .06em; }
 

@@ -76,7 +76,7 @@ function App() {
         <RouteMap />
         <p className="maptext">
           <a className="cta" href={directionsUrl} target="_blank" rel="noopener noreferrer">
-            click for directions
+            Click here for directions
           </a>
         </p>
       </section>
