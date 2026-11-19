@@ -36,7 +36,8 @@ body {
 .datelink:hover, .datelink:focus-visible, .churchlink:hover, .churchlink:focus-visible { color: var(--accent); }
 .hero .sub { margin: 0 0 .5rem; color: var(--soft); font-size: clamp(1.25rem, 3.75vw, 1.5rem); letter-spacing: .08em; }
 
-.wip { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 20; box-shadow: 0 2px 8px rgba(59,58,54,.12); display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; padding: .6rem .6rem .6rem 1rem; border: 1.5px dashed var(--accent); border-radius: 6px; background: #f4f2ed; color: var(--ink); font-size: 1.05rem; }
+.wip { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%; transform: translateX(-50%); box-sizing: border-box; width: min(calc(100vw - 32px), 52rem); z-index: 20; box-shadow: 0 2px 8px rgba(59,58,54,.12); display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0; padding: .6rem .6rem .6rem 1rem; border: 1.5px dashed var(--accent); border-radius: 6px; background: #f4f2ed; color: var(--ink); font-size: 1.05rem; }
+.wip a { color: var(--accent); }
 .wip strong { font-weight: 500; color: var(--accent); letter-spacing: .04em; }
 .wip-x { flex: none; width: 2rem; height: 2rem; border: 0; border-radius: 50%; background: transparent; color: var(--ink); font-size: 1.5rem; line-height: 1; cursor: pointer; }
 .wip-x:hover, .wip-x:focus-visible { background: rgba(138,106,79,.18); outline: none; }

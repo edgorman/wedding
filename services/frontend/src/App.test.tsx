@@ -105,6 +105,14 @@ test('the work-in-progress banner can be closed', () => {
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
 
+test('the dev site says it is not the real site and links to it', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => ({ environment: 'staging', siteUrl: 'https://katieanded.com' }) }))
+  render(<App />)
+  expect(await screen.findByText("This isn't the real site.")).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Go to the real site' })).toHaveAttribute('href', 'https://katieanded.com')
+  vi.unstubAllGlobals()
+})
+
 test('the work-in-progress banner closes once the hero has scrolled away', () => {
   render(<App />)
   const hero = document.querySelector('.hero') as HTMLElement
@@ -113,7 +121,6 @@ test('the work-in-progress banner closes once the hero has scrolled away', () =>
   fireEvent.scroll(window)
   expect(screen.getByRole('status')).toBeInTheDocument()
   rect.mockReturnValue({ top: -600, bottom: -100 } as DOMRect)
-  window.scrollBy = vi.fn()
   fireEvent.scroll(window)
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
 })
