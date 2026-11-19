@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
 import { art } from './artwork'
 import { calendarUrl, directionsUrl, spots } from './mapInfo'
 import { RouteMap } from './RouteMap'
@@ -12,8 +11,28 @@ import '@fontsource/cormorant-garamond/latin-400-italic.css'
 import '@fontsource/caveat/latin-500.css'
 import './App.css'
 
+const REAL_SITE = 'https://katieanded.com'
+
+// The deploy writes config.json next to the bundle (see docs/decisions/0009): on staging it names the
+// environment and the real site's address. Missing (local dev, tests), the page just carries on as the real site.
+async function realSiteUrl(): Promise<string | null> {
+  try {
+    const response = await fetch('/config.json')
+    const config = await response.json()
+    const other = typeof config.siteUrl === 'string' && new URL(config.siteUrl).hostname !== window.location.hostname
+    return config.environment === 'staging' || other ? config.siteUrl || REAL_SITE : null
+  } catch {
+    return null
+  }
+}
+
 function App() {
   const [bannerOpen, setBannerOpen] = useState(true)
+  // Set on the dev (staging) site: the address of the real one.
+  const [realSite, setRealSite] = useState<string | null>(null)
+  useEffect(() => {
+    void realSiteUrl().then(setRealSite)
+  }, [])
   const heroRef = useRef<HTMLElement>(null)
 
   // Close the work-in-progress banner for good once the hero has scrolled out of view.
@@ -22,10 +41,7 @@ function App() {
     const onScroll = () => {
       const hero = heroRef.current
       if (!hero || hero.getBoundingClientRect().bottom > 0) return
-      const before = hero.getBoundingClientRect().top
-      flushSync(() => setBannerOpen(false))
-      // Removing the banner shifts the page up; scroll by the same amount so nothing jumps.
-      window.scrollBy(0, hero.getBoundingClientRect().top - before)
+      setBannerOpen(false)
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
@@ -35,11 +51,20 @@ function App() {
     <main className="page">
       {bannerOpen && (
         <div className="wip" role="status">
-          <span>
-            <strong>Work in progress.</strong>
-            <br />
-            Thanks for visiting, but it&apos;s not ready yet.
-          </span>
+          {realSite ? (
+            <span>
+              <strong>This isn&apos;t the real site.</strong>
+              <br />
+              It&apos;s a test copy.{' '}
+              <a href={realSite}>Go to the real site</a>
+            </span>
+          ) : (
+            <span>
+              <strong>Work in progress.</strong>
+              <br />
+              Thanks for visiting, but it&apos;s not ready yet.
+            </span>
+          )}
           <button type="button" className="wip-x" aria-label="Close banner" onClick={() => setBannerOpen(false)}>
             &times;
           </button>
@@ -76,7 +101,7 @@ function App() {
         <RouteMap />
         <p className="maptext">
           <a className="cta" href={directionsUrl} target="_blank" rel="noopener noreferrer">
-            click for directions
+            Click here for directions
           </a>
         </p>
       </section>
