@@ -1,5 +1,5 @@
 # renovate: datasource=github-releases depName=moonrepo/moon extractVersion=^v(?<version>.+)$
-moon = "2.5.5"
+moon = "2.6.5"
 # renovate: datasource=node-version depName=node
 node = "22"            # matches setup-node '22' in both workflows today
 # renovate: datasource=npm depName=npm
