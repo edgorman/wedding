@@ -22,17 +22,19 @@ Shown beside each time on "The day". Square, 80 x 80 units (shown at 76px on des
 
 ## Map (`map/`)
 
-The map is a stack of transparent layers that all line up on a 600 x 900 canvas, from back to front: `map`, every `house`, every `tree`, `route`, then `church`, `venue`, `bus`.
+The map is a stack of transparent layers that all line up on a 1800 x 900 canvas, from back to front: `map`, every `house`, every `tree`, `route`, then `church`, `venue`, `bus`.
+
+Phones show only the middle third of the canvas (a 600 x 900 slice), and the map widens with the screen until a desktop (80% of the screen width) shows all of it. So keep everything that matters, the whole route included, in the middle third. The dotted frame is drawn by the page, not by `map.svg`.
 
 | File | What | Proportions (width x height) |
 | --- | --- | --- |
-| `map/map.svg` | Land, fields, roads and rivers. | 600 x 900 |
-| `map/route.svg` | The red bus route. Must line up with `map`, so draw it on the same 600 x 900 canvas. | 600 x 900 |
+| `map/map.svg` | Land, fields, roads and rivers. | 1800 x 900 |
+| `map/route.svg` | The red bus route. Must line up with `map`, so draw it on the same 1800 x 900 canvas. | 1800 x 900 |
 | `map/church.svg` | St James' Church (tap for info). | 94 x 106 |
 | `map/bus.svg` | The guest bus (tap for info). | 95 x 77 |
 | `map/venue.svg` | Burrows Lea Country House (tap for info). | 134 x 80 |
-| `map/house.svg` | One small house, repeated about 190 times at different sizes. | 18 x 20 |
-| `map/tree.svg` | One tree, repeated about 250 times at different sizes. | 800 x 888 |
+| `map/house.svg` | One small house, repeated about 470 times at different sizes. | 18 x 20 |
+| `map/tree.svg` | One tree, repeated about 680 times at different sizes. | 800 x 888 |
 
 Where each icon sits is listed in [`../mapLayout.ts`](../mapLayout.ts). Move or resize one there if a new drawing needs a different frame. The tap targets for the church, bus and venue are in [`../mapInfo.ts`](../mapInfo.ts).
 

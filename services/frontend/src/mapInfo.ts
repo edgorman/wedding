@@ -1,10 +1,10 @@
-const directions =
+import type { Box } from './mapLayout'
+
+export const directionsUrl =
   "https://www.google.com/maps/dir/?api=1&origin=St+James'+Church,+Shere&destination=Burrows+Lea+Country+House&travelmode=driving"
 
 export const calendarUrl =
   'https://calendar.google.com/calendar/render?action=TEMPLATE&text=Katie+%26+Ed%27s+Wedding&dates=20271016T130000/20271016T230000&ctz=Europe/London&location=St+James%27+Church,+Shere&details=Ceremony+at+1:00+pm+at+St+James%27+Church,+Shere.+Reception+at+Burrows+Lea+Country+House.'
-
-export const directionsUrl = directions
 
 export type Spot = {
   title: string
@@ -12,7 +12,8 @@ export type Spot = {
   linkText: string
   href: string
   label: string
-  box: { left: string; top: string; width: string; height: string }
+  // The tap target, in map units like the boxes in mapLayout.ts.
+  box: Box
 }
 
 export const spots: Record<'church' | 'bus' | 'venue', Spot> = {
@@ -22,15 +23,15 @@ export const spots: Record<'church' | 'bus' | 'venue', Spot> = {
     linkText: 'Church Lane, Shere, GU5 9HJ',
     href: 'https://maps.app.goo.gl/LxyWMHvFjjvrS6j67',
     label: "About St James' Church",
-    box: { left: '30.2%', top: '14.2%', width: '14.4%', height: '11.2%' },
+    box: [181.2, 127.8, 86.4, 100.8],
   },
   bus: {
     title: 'The guest bus',
     lines: ['Leaves the church at 2:30 pm and takes about 15 minutes to reach Burrows Lea.'],
     linkText: 'Open the route in Google Maps',
-    href: directions,
+    href: directionsUrl,
     label: 'About the guest bus',
-    box: { left: '47.5%', top: '50%', width: '18.5%', height: '11%' },
+    box: [285, 450, 111, 99],
   },
   venue: {
     title: 'Burrows Lea Country House',
@@ -38,6 +39,6 @@ export const spots: Record<'church' | 'bus' | 'venue', Spot> = {
     linkText: 'Hook Lane, Shere, GU5 9QG',
     href: 'https://www.google.com/maps/search/?api=1&query=Burrows+Lea+Country+House',
     label: 'About Burrows Lea Country House',
-    box: { left: '51.5%', top: '69.5%', width: '23.2%', height: '8.3%' },
+    box: [309, 625.5, 139.2, 74.7],
   },
 }

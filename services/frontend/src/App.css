@@ -60,14 +60,25 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .where { margin: .2rem 0 0; color: var(--soft); font-style: italic; font-size: 1.05rem; line-height: 1.25; }
 .pic img { width: 76px; height: 76px; display: block; }
 
-/* Map */
-.map { position: relative; display: block; text-decoration: none; color: inherit; margin-bottom: 1rem; }
-.mapwrap { position: relative; max-width: 540px; margin: 0 auto; }
-.map .base { width: 100%; height: auto; display: block; }
-/* The small drawn map icons sit over the base map, clipped to its rounded frame. */
-.map .icons { position: absolute; inset: 0; clip-path: inset(.889% 1.333% round 1.712% / 1.131%); pointer-events: none; }
+/* Map: one wide drawing (2:1). The wrap is the visible window: a tall 2:3 slice of the middle on phones.
+   From 561px up it is 80% of the screen width (breaking out of the text column), as tall as the whole
+   drawing needs, and shows all of it once it is at least 900px wide; narrower, it crops the sides. */
+.mapwrap { position: relative; width: 300px; height: 450px; margin: 0 auto 1rem; }
+@media (min-width: 561px) {
+  .mapwrap { --w: min(80vw, 2000px); width: var(--w); height: max(450px, var(--w) / 2); margin-inline: calc(50% - var(--w) / 2); }
+}
+.mapwindow { position: absolute; inset: 0; overflow: hidden; clip-path: inset(4px round 5px); }
+.mapcanvas { position: absolute; top: 0; left: 50%; height: 100%; aspect-ratio: 2 / 1; transform: translateX(-50%); }
+.map { position: absolute; inset: 0; display: block; text-decoration: none; color: inherit; }
+.map .base { width: 100%; height: 100%; display: block; }
+/* The small drawn map icons sit over the base map. */
+.map .icons { position: absolute; inset: 0; pointer-events: none; }
 .map .icons img { position: absolute; display: block; }
-.map:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
+.mapwrap:has(.map:focus-visible) { outline: 2px solid var(--accent); outline-offset: 6px; }
+.map:focus-visible { outline: none; }
+/* The dotted frame around the visible window. */
+.mapframe { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); overflow: visible; pointer-events: none; }
+.mapframe rect { fill: none; stroke: var(--ink); stroke-width: .8; stroke-dasharray: .5 4; stroke-linecap: round; opacity: .7; }
 .hot { position: absolute; padding: 0; border: 1.5px dashed transparent; border-radius: 10px; background: transparent; cursor: pointer; z-index: 2; }
 .hot:hover, .hot:focus-visible, .hot[aria-expanded="true"] { border-color: var(--accent); background: rgba(138,106,79,.08); outline: none; }
 .hot i { position: absolute; top: -9px; right: -9px; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--accent); background: #f4f2ed; color: var(--accent); font: italic 600 .8rem/15px var(--display); text-align: center; }
@@ -82,7 +93,6 @@ h2 { font-weight: 400; text-align: center; font-size: 1.1rem; letter-spacing: .3
 .maptext { text-align: center; margin: .5rem 0 0; }
 .cta { font-size: .85rem; font-style: italic; letter-spacing: .08em; color: var(--soft); text-decoration: none; }
 .cta:hover, .cta:focus-visible { color: var(--accent); }
-.note { text-align: center; color: var(--soft); font-style: italic; margin: .4rem 0 0; }
 .dance { display: block; width: 11rem; max-width: 60%; height: auto; margin: 1.5rem auto 4.5rem; }
 .closing { text-align: center; margin: 0; padding-block: 3.5rem .5rem; color: var(--accent); font-size: 1.5rem; font-style: italic; letter-spacing: .06em; }
 
