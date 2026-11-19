@@ -1,12 +1,12 @@
 # Applied once per environment (staging/prod), against a state bucket infrastructure/root already
 # created - so unlike that root, this one needs no local-state bootstrap.
 terraform {
-  required_version = "1.15.8"
+  required_version = "1.17.2"
 
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "8.10.0"
+      version = "8.12.0"
     }
   }
 
