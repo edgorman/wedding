@@ -5,7 +5,7 @@ node = "22"            # matches setup-node '22' in both workflows today
 # renovate: datasource=npm depName=npm
 npm = "10.9.11"         # version bundled with Node 22 today; no prior pin existed to match
 # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
-terraform = "1.15.8"   # matches setup-terraform and every providers.tf required_version
+terraform = "1.17.2"   # matches setup-terraform and every providers.tf required_version
 
 [plugins]
 # Third-party proto plugin (proto's registry/data/third-party.json), pinned to a commit SHA rather
