@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/edgorman/wedding/compare/v1.1.0...v1.2.0) (2026-11-25)
+
+
+### Features
+
+* **frontend:** draggable, zoomable map out to Guildford with full screen ([#38](https://github.com/edgorman/wedding/issues/38)) ([175e37d](https://github.com/edgorman/wedding/commit/175e37d48b2c16f47a04030c3ac1de643ede1515))
+
+
+### Miscellaneous Chores
+
+* **deps:** update ci-deps ([#41](https://github.com/edgorman/wedding/issues/41)) ([7064121](https://github.com/edgorman/wedding/commit/7064121652b89fe9ef22a675c98bfa8f149fb876))
+* **deps:** update ci-deps ([#42](https://github.com/edgorman/wedding/issues/42)) ([90b8643](https://github.com/edgorman/wedding/commit/90b86439f2e9fdef125fdea1865fc61342dfb7e8))
+* **deps:** update dependency moon to v2.6.6 ([#43](https://github.com/edgorman/wedding/issues/43)) ([38b1fc6](https://github.com/edgorman/wedding/commit/38b1fc66ba11334a01bde9711baf040e3e3af42a))
+* **deps:** update frontend-deps ([#44](https://github.com/edgorman/wedding/issues/44)) ([dc95ed1](https://github.com/edgorman/wedding/commit/dc95ed1c1f1e6dc970ac45cf1e54e3dc82d23c1a))
+
 ## [1.1.0](https://github.com/edgorman/wedding/compare/v1.0.0...v1.1.0) (2026-11-19)
 
 
