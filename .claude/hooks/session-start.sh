@@ -57,7 +57,7 @@ fi
 # With both set, `moon run`/`moon ci` work here. See AGENTS.md's Commands section for the
 # task that still can't (Terraform `validate`).
 # renovate: datasource=github-releases depName=moonrepo/proto extractVersion=^v(?<version>.+)$
-proto_version='0.64.0'
+proto_version='0.64.1'
 moon_version="$(sed -n 's/^moon = "\([^"]*\)".*/\1/p' .prototools | head -1)"
 if ! "$BIN_DIR/proto" --version 2>/dev/null | grep -qx "$proto_version"; then
   proto_tmp="$(mktemp -d)"
